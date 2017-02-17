@@ -98,13 +98,8 @@ f <- function(x, t) return(t[0] + x * t[1:(length(t)-1)])
 
 \begin{thebibliography}{9}
 
-
-
 \bibitem{knitr16} Yihui Xie (2016). knitr: A General-Purpose Package for Dynamic
 	Report Generation in R. R package version 1.15.1.
-
-\bibitem{vnb} Voinov V., Nikulin M., Balaskrishnan N. Chi-Squared Goodness of
-	Fit Tests with Applications, Academic Press.
 
 \end{thebibliography}
 
