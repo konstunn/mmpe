@@ -87,19 +87,45 @@
 \section{Ход работы}
 
 <<mod-def>>=
-m <- 5
-theta <- c(1, 2, 3, 4, 5)
-f <- function(x, t) return(t[0] + x * t[1:(length(t)-1)])
-#loglik <- function(X, t) {
-#	apply(X, 1, f, t=t)
-#}
-#I <- -hessian()
+s <- 3
+
+# model parameters
+th <- rnorm(s)
+
+q <- s * (s + 1) / 2 + 1
+
+# input sequences
+# TODO: put constraints on them
+a <- rnorm(s*q)
+a <- matrix(a, byrow=T, nrow=q)
+
+# weights
+p <- rnorm(q)
+p <- p / sum(p)
+
+# plan
+xi <- list(a, p)
+
+M <- function(a, th) {
+	rez <- (a %*% t(a)) * (th %*% t(th))
+	return(rez)
+}
+
+#mld <- function(u)
+
+library(plyr)
+
+# list of matrices
+Mi <- alply(a, 1, M, th=th)
+
+Mi <- Map('*', Mi, p)
+
+Mxi <- Reduce('+', Mi)
+
+# TODO: optimize mld by 'a' and 'p'
+mld <- -log(det(Mxi))
+mld
 @
-
-	\item
-
-
-\end{enumerate}
 
 \section*{Заключение}
 
