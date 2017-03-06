@@ -87,23 +87,25 @@
 \section{Ход работы}
 
 <<mod-def>>=
+# number of model parameters
 s <- 3
 
 # model parameters
 th <- rnorm(s)
 
+#
 q <- s * (s + 1) / 2 + 1
 
-# input sequences
+# input data (alpha)
 # TODO: put constraints on them
 a <- rnorm(s*q)
 a <- matrix(a, byrow=T, nrow=q)
 
-# weights
+# initial random weights
 p <- rnorm(q)
 p <- p / sum(p)
 
-# plan
+# plan structure
 xi <- list(a, p)
 
 M <- function(a, th) {
