@@ -87,6 +87,30 @@
 \section{Ход работы}
 
 <<mod-def>>=
+genInitData <- function(s)
+{
+	# number of model parameters
+	s <- 3
+
+	# model parameters (theta)
+	th <- runif(s, min=-1, max=1)
+
+	# number of input signals in the plan
+	q <- s * (s + 1) / 2 + 1
+
+	# input data (alpha)
+	a <- runif(s*q, min=-1, max=1)
+	A <- matrix(a, byrow=T, nrow=q)
+
+	# initial random weights
+	p <- runif(q, min=0, max=1)
+
+	# normalize
+	p <- p / sum(p)
+
+	return(list(th, A, p))
+}
+
 # number of model parameters
 s <- 3
 
