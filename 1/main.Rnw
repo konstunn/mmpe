@@ -90,43 +90,54 @@
 # number of model parameters
 s <- 3
 
-# model parameters
-th <- rnorm(s)
+# model parameters (theta)
+th <- runif(s, min=-1, max=1)
 
-#
+# number of input signals in the plan
 q <- s * (s + 1) / 2 + 1
 
 # input data (alpha)
 # TODO: put constraints on them
-a <- rnorm(s*q)
-a <- matrix(a, byrow=T, nrow=q)
+a <- runif(s*q, min=-1, max=1)
+A <- matrix(a, byrow=T, nrow=q)
 
 # initial random weights
-p <- rnorm(q)
+p <- abs(rnorm(q))
+
+# normalize
 p <- p / sum(p)
 
-# plan structure
-xi <- list(a, p)
-
+# information matrix
 M <- function(a, th) {
 	rez <- (a %*% t(a)) * (th %*% t(th))
 	return(rez)
 }
 
-#mld <- function(u)
+mldmp <- function(p, a, arows, th)
+{
+	A <- matrix(a, byrow=T, nrow=arows)
 
-library(plyr)
+	# list of matrices for every point of the plan
+	Mi <- plyr::alply(A, 1, M, th=th)
 
-# list of matrices
-Mi <- alply(a, 1, M, th=th)
+	# multiply by weights 'p'
+	Mi <- Map('*', Mi, p)
 
-Mi <- Map('*', Mi, p)
+	# normalized information matrix
+	Mxi <- Reduce('+', Mi)
 
-Mxi <- Reduce('+', Mi)
+	mldm <- -log(det(Mxi))
 
-# TODO: optimize mld by 'a' and 'p'
-mld <- -log(det(Mxi))
-mld
+	return(mldm)
+}
+
+mldma <- function(a, arows, p, th)
+{
+	mldmp(p, a, arows, th)
+}
+
+mldma(c(A), nrow(A), p, th)
+mldmp(p, c(A), nrow(A), th)
 @
 
 \section*{Заключение}
