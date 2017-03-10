@@ -139,9 +139,13 @@ M <- function(a, th)
 	return(rez)
 }
 
-mldmp <- function(p, a, arows, th)
+mldm <- function(u, q, th)
 {
-	A <- matrix(a, byrow=T, nrow=arows)
+	a <- head(u, n=-q)
+
+	p <- tail(u, n=q)
+
+	A <- matrix(a, byrow=T, nrow=q)
 
 	# list of matrices for every point of the plan
 	Mi <- plyr::alply(A, 1, M, th=th)
@@ -157,13 +161,8 @@ mldmp <- function(p, a, arows, th)
 	return(mldm)
 }
 
-mldma <- function(a, arows, p, th)
-{
-	mldmp(p, a, arows, th)
-}
-
-mldma(c(A), nrow(A), p, th)
-mldmp(p, c(A), nrow(A), th)
+# TODO: optimize by 'u' with SQP with constraints
+mldm(c(A, p), q, th)
 @
 
 \section*{Заключение}
