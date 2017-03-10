@@ -108,8 +108,10 @@ p <- runif(q, min=0, max=1)
 p <- p / sum(p)
 
 # information matrix
-M <- function(a, th) {
-	rez <- (a %*% t(a)) * (th %*% t(th))
+M <- function(a, th)
+{
+	f <- th * a
+	rez <- f %*% t(f)
 	return(rez)
 }
 
