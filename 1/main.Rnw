@@ -86,20 +86,27 @@
 
 \section{Ход работы}
 
-<<mod-def>>=
-genInitData <- function(s)
+<<functions>>=
+genSeed <- function()
 {
-	# number of model parameters
-	s <- 3
+	t <- as.numeric(Sys.time())
+	seed <- 1e8 * (t - floor(t))
+	return(seed)
+}
+
+# TODO: add intercept
+genInitData <- function(s=3)
+{
+	# number of input signals in the plan
+	q <- s * (s + 1) / 2 + 1
 
 	# model parameters (theta)
 	th <- runif(s, min=-1, max=1)
 
-	# number of input signals in the plan
-	q <- s * (s + 1) / 2 + 1
-
 	# input data (alpha)
 	a <- runif(s*q, min=-1, max=1)
+	# NOTE: from -1 to 1
+
 	A <- matrix(a, byrow=T, nrow=q)
 
 	# initial random weights
@@ -108,28 +115,8 @@ genInitData <- function(s)
 	# normalize
 	p <- p / sum(p)
 
-	return(list(th, A, p))
+	return(list(th=th, A=A, p=p, q=q))
 }
-
-# number of model parameters
-s <- 3
-
-# model parameters (theta)
-th <- runif(s, min=-1, max=1)
-
-# number of input signals in the plan
-q <- s * (s + 1) / 2 + 1
-
-# input data (alpha)
-# TODO: put constraints on them
-a <- runif(s*q, min=-1, max=1)
-A <- matrix(a, byrow=T, nrow=q)
-
-# initial random weights
-p <- runif(q, min=0, max=1)
-
-# normalize
-p <- p / sum(p)
 
 # information matrix
 M <- function(a, th)
@@ -139,6 +126,7 @@ M <- function(a, th)
 	return(rez)
 }
 
+# -log(det(M))
 mldm <- function(u, q, th)
 {
 	a <- head(u, n=-q)
@@ -160,8 +148,77 @@ mldm <- function(u, q, th)
 
 	return(mldm)
 }
+@
 
-# TODO: optimize by 'u' with SQP with constraints
+<<chunk>>=
+set.seed(102)
+
+# generate initial data
+s <- 3
+L <- genInitData(s)
+
+# print initial data
+A <- L$A
+p <- L$p
+q <- L$q
+th <- L$th
+
+library(nloptr)
+
+# equalities constraints
+heq <- function(u) {
+	p <- tail(u, n=q)
+	return(sum(p) - 1)
+}
+
+# inequalities constraints
+hin <- function(u) {
+	p <- tail(u, n=q)
+	a <- head(u, n=-q)
+	alen <- length(a)
+	cond <- p > rep(0, q)
+	cond <- c(cond, a > rep(-1, alen))
+	cond <- c(cond, a < rep(1, alen))
+	if (all(cond))
+		return(1)
+	else
+		return(-1)
+}
+@
+
+<<solve, warning=F>>=
+# solve
+l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, q=q, th=th)
+@
+
+<<final-chunk>>=
+# print plan
+l$value
+A <- l$par
+p <- tail(A, n=q)
+p
+A <- head(A, n=-q)
+A <- matrix(A, nrow=q)
+A
+
+
+# clean plan
+i <- which(p == min(p))
+
+# weight of a point to remove
+p[i]
+
+A <- A[-i,]
+p <- p + rep(p[i] / (q-1), length(p))
+p <- p[-i]
+q <- q - 1
+
+# print plan
+p
+sum(p)
+A
+
+# criterion value
 mldm(c(A, p), q, th)
 @
 
