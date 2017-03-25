@@ -87,7 +87,7 @@
 \section{Ход работы}
 
 <<functions>>=
-genSeed <- function()
+seedFromDate <- function()
 {
 	t <- as.numeric(Sys.time())
 	seed <- 1e8 * (t - floor(t))
@@ -97,6 +97,7 @@ genSeed <- function()
 # TODO: add intercept
 genInitData <- function(s=3)
 {
+	# TODO: generate non-singular initial plan!
 	# number of input signals in the plan
 	q <- s * (s + 1) / 2 + 1
 
@@ -151,7 +152,7 @@ mldm <- function(u, q, th)
 @
 
 <<chunk>>=
-set.seed(102)
+set.seed(103)
 
 # generate initial data
 s <- 3
@@ -159,6 +160,7 @@ L <- genInitData(s)
 
 # print initial data
 A <- L$A
+A
 p <- L$p
 q <- L$q
 th <- L$th
@@ -186,7 +188,7 @@ hin <- function(u) {
 }
 @
 
-<<solve, warning=F>>=
+<<solve, warning=T>>=
 # solve
 l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, q=q, th=th)
 @
@@ -204,14 +206,10 @@ A
 
 # clean plan
 i <- which(p == min(p))
-
-# weight of a point to remove
-p[i]
-
+p[i] # weight of a point to remove
 A <- A[-i,]
 p <- p + rep(p[i] / (q-1), length(p))
 p <- p[-i]
-q <- q - 1
 
 # print plan
 p
@@ -219,6 +217,19 @@ sum(p)
 A
 
 # criterion value
+mldm(c(A, p), q-1, th)
+@
+
+<<>>=
+l <- list(c(-1,1))
+l <- rep(l, 3)
+dfeg <- expand.grid(l)
+q <- 2^3
+p <- rep(1, q)
+p
+A <- data.matrix(dfeg)
+A
+
 mldm(c(A, p), q, th)
 @
 
