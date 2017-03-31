@@ -237,6 +237,16 @@ val
 Значение критерия: \Sexpr{val}
 
 <<ref-plan>>=
+refplan <- function(s) {
+	l <- list(c(-1,1))
+	l <- rep(l, s)
+	dfeg <- expand.grid(l)
+	q <- 2^s
+	p <- rep(1/q, q)
+	A <- data.matrix(dfeg)
+	return(list(th=th, A=A, p=p, q=q))
+}
+
 # TODO: extract to function
 l <- list(c(-1,1))
 l <- rep(l, s)
