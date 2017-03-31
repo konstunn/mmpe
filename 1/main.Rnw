@@ -155,11 +155,12 @@ s <- 2
 L <- genInitData(s)
 
 # print initial data
-A <- L$A
-A
-p <- L$p
+(A <- L$A)
+(p <- L$p)
 q <- L$q
 th <- L$th
+
+(val <- mldm(c(A, p), q, th))
 
 library(nloptr)
 
@@ -185,8 +186,8 @@ hin <- function(u) {
 @
 
 <<solve, warning=T>>=
-# solve
-l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, q=q, th=th)
+l <- nl.opts(list(xtol_rel = 1e-8, maxeval=3000))
+(l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, q=q, th=th))
 @
 
 <<par2plan>>=
@@ -202,14 +203,11 @@ l2plan <- function(l, q) {
 
 <<solution>>=
 # print plan
-l$value
-val <- l$value
-A <- l$par
-p <- tail(A, n=q)
-p
-A <- head(A, n=-q)
-A <- matrix(A, nrow=q)
-A
+l <- l2plan(l, q)
+(val <- l$value)
+
+(p <- l$p)
+(A <- l$A)
 @
 
 Значение критерия: \Sexpr{val}
@@ -230,8 +228,7 @@ p
 A
 
 # criterion value
-val <- mldm(c(A, p), q-1, th)
-val
+(val <- mldm(c(A, p), q-1, th))
 @
 
 Значение критерия: \Sexpr{val}
@@ -248,16 +245,12 @@ refplan <- function(s) {
 }
 
 # TODO: extract to function
-l <- list(c(-1,1))
-l <- rep(l, s)
-dfeg <- expand.grid(l)
-q <- 2^s
-p <- rep(1, q)
-p
-A <- data.matrix(dfeg)
-A
+l <- refplan(s)
+q <- l$q
+(p <- l$p)
+(A <- l$A)
 
-val <- mldm(c(A, p), q, th)
+(val <- mldm(c(A, p), q, th))
 @
 
 Значение критерия: \Sexpr{val}
