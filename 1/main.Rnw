@@ -125,8 +125,10 @@ M <- function(a, th)
 }
 
 # -log(det(M))
-mldm <- function(u, q, th)
+mldm <- function(u, th)
 {
+	q <- length(u) / (length(th) + 1)
+
 	a <- head(u, n=-q)
 
 	p <- tail(u, n=q)
@@ -162,7 +164,7 @@ L <- genInitData(s)
 q <- L$q
 th <- L$th
 
-(val <- mldm(c(A, p), q, th))
+(val <- mldm(c(A, p), th))
 @
 
 <<constraints, purl=T>>=
@@ -190,7 +192,7 @@ hin <- function(u) {
 <<solve, warning=T>>=
 library(nloptr)
 l <- nl.opts(list(xtol_rel = 1e-8, maxeval=3000))
-(l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, q=q, th=th))
+(l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, th=th))
 @
 
 <<sqp2plan, purl=T>>=
@@ -231,7 +233,7 @@ p
 A
 
 # criterion value
-(val <- mldm(c(A, p), q-1, th))
+(val <- mldm(c(A, p), th))
 @
 
 Значение критерия: \Sexpr{val}
@@ -244,7 +246,7 @@ optplan <- function(s) {
 	q <- 2^s
 	p <- rep(1/q, q)
 	A <- data.matrix(dfeg)
-	return(list(th=th, A=A, p=p, q=q))
+	return(list(A=A, p=p, q=q))
 }
 @
 
@@ -255,15 +257,15 @@ q <- l$q
 (p <- l$p)
 (A <- l$A)
 
-(val <- mldm(c(A, p), q, th))
+(val <- mldm(c(A, p), th))
 @
 
 Значение критерия: \Sexpr{val}
 
 <<subopt>>=
 A <- A * 0.8
-(val <- mldm(c(A, p), q, th))
-(l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, q=q, th=th))
+(val <- mldm(c(A, p), th))
+(l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, th=th))
 (l <- sqp2plan(l, q))
 @
 
