@@ -129,7 +129,7 @@ mldm <- function(u, q, th)
 
 	p <- tail(u, n=q)
 
-	A <- matrix(a, byrow=T, nrow=q)
+	A <- matrix(a, nrow=q)
 
 	# list of matrices for every point of the plan
 	Mi <- plyr::alply(A, 1, M, th=th)
