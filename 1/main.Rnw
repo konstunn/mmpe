@@ -86,8 +86,11 @@
 
 \section{Ход работы}
 
-<<functions>>=
-# TODO: add intercept
+<<chunk-opts-set>>=
+opts_chunk$set(warning=T, purl=F)
+@
+
+<<functions, purl=T>>=
 genInitData <- function(s)
 {
 	# TODO: generate non-singular initial plan!
@@ -113,7 +116,6 @@ genInitData <- function(s)
 	return(list(th=th, A=A, p=p, q=q))
 }
 
-# TODO: add intercept
 # information matrix
 M <- function(a, th)
 {
@@ -161,9 +163,9 @@ q <- L$q
 th <- L$th
 
 (val <- mldm(c(A, p), q, th))
+@
 
-library(nloptr)
-
+<<constraints, purl=T>>=
 # equalities constraints
 heq <- function(u) {
 	p <- tail(u, n=q)
@@ -186,12 +188,13 @@ hin <- function(u) {
 @
 
 <<solve, warning=T>>=
+library(nloptr)
 l <- nl.opts(list(xtol_rel = 1e-8, maxeval=3000))
 (l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, q=q, th=th))
 @
 
-<<par2plan>>=
-l2plan <- function(l, q) {
+<<sqp2plan, purl=T>>=
+sqp2plan <- function(l, q) {
 	u <- l$par
 	p <- tail(u, n=q)
 	A <- head(u, n=-q)
@@ -203,7 +206,7 @@ l2plan <- function(l, q) {
 
 <<solution>>=
 # print plan
-l <- l2plan(l, q)
+l <- sqp2plan(l, q)
 (val <- l$value)
 
 (p <- l$p)
@@ -233,8 +236,8 @@ A
 
 Значение критерия: \Sexpr{val}
 
-<<ref-plan>>=
-refplan <- function(s) {
+<<optplan-function, purl=T>>=
+optplan <- function(s) {
 	l <- list(c(-1,1))
 	l <- rep(l, s)
 	dfeg <- expand.grid(l)
@@ -243,9 +246,11 @@ refplan <- function(s) {
 	A <- data.matrix(dfeg)
 	return(list(th=th, A=A, p=p, q=q))
 }
+@
 
+<<optplan>>=
 # TODO: extract to function
-l <- refplan(s)
+l <- optplan(s)
 q <- l$q
 (p <- l$p)
 (A <- l$A)
@@ -254,6 +259,13 @@ q <- l$q
 @
 
 Значение критерия: \Sexpr{val}
+
+<<subopt>>=
+A <- A * 0.8
+(val <- mldm(c(A, p), q, th))
+(l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, q=q, th=th))
+(l <- sqp2plan(l, q))
+@
 
 \section*{Заключение}
 
