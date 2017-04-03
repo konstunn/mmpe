@@ -1,0 +1,121 @@
+
+\documentclass[a4paper,14pt]{extarticle}
+
+\usepackage{cmap}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage[russian]{babel}
+
+\usepackage[a4paper,margin=1.5cm,footskip=1cm,left=2cm,right=1.5cm,top=1.5cm
+	,bottom=2.0cm]{geometry}
+\usepackage{textcase}
+\usepackage{csquotes}
+\usepackage{enumitem}
+
+\usepackage[labelsep=period,justification=centering]{caption}
+
+\usepackage{amsmath}
+\usepackage{pgfplots}
+
+\usepackage{float}
+
+\usepackage{indentfirst}
+
+\setlist[description]{leftmargin=\parindent,labelindent=\parindent}
+
+\begin{document}
+
+\setcounter{secnumdepth}{0}
+
+\begin{titlepage}
+
+	\begin{center}
+		Новосибирский государственный технический университет
+		
+		Факультет прикладной математики и информатики
+		
+		Кафедра теоретической и прикладной информатики
+		
+		\vspace{250pt}
+		
+		\textbf{\LARGE{Лабораторная работа № 2}}
+		\medbreak
+		\small{по дисциплине \\
+		\medbreak
+		<<Математические методы планирования эксперимента>>}
+		\vspace{100pt}
+	\end{center}
+
+	\begin{flushleft}
+		\begin{tabbing}
+			Группа:\qquad\qquad \= ПММ-61\\
+			Студент:            \> Горбунов К. К.\\
+			Преподаватели:      \> доц. Черникова О. С.\\
+													\> доц. Филиппова Е. В.
+		\end{tabbing}
+	\end{flushleft}
+
+	\begin{center}
+		\vspace{\fill}
+		Новосибирск, 2017 г.
+	\end{center}
+
+\end{titlepage}
+
+\newpage
+
+\renewenvironment{knitrout}{\setlength{\topsep}{0mm}}{}
+
+\section{Цель работы}
+
+Ознакомиться с двойственной процедурой синтеза непрерывных планов эксперимента.
+
+\section{Задание к лабораторной работе}
+
+\begin{enumerate}
+	\item Написать программу, реализующую двойственную градиентнтую процедуру
+		планирования D-оптимальных входных сигнало сигналов для регрессионных
+		моделей.
+	\item Округлить полученные непрерывные планы эксперимента до дискретных
+		планов, в соответствии с алгоритмом, реализованным в лабораторной работе
+		№ 1.
+	\item Проверить правильность работы программ на моделях с различным числом
+		варьируемых параметров.
+\end{enumerate}
+
+
+\section{Ход работы}
+
+
+\subsection{Вспомогательные процедуры}
+
+<<options, echo=FALSE, cache=FALSE>>=
+opts_chunk$set(warning=TRUE, purl=FALSE, cache=TRUE, autodep=TRUE)
+dep_auto()
+options(digits=5, width=60)
+@
+
+\section*{Заключение}
+
+Заключение.
+
+\begin{thebibliography}{9}
+
+\begin{sloppypar}
+
+\bibitem{mono} Активная параметрическая идентификация стохастических линейных
+	систем: монография / В.И. Денисов, В.М. Чубич, О.С. Черникова, Д.И. Бобылева.
+		--- Новосибирск : Изд-во НГТУ, 2009. --- 192 с.
+		(Серия <<Монографии НГТУ>>).
+
+\end{sloppypar}
+
+\bibitem{knitr16} Yihui Xie (2016). knitr: A General-Purpose Package for
+	Dynamic Report Generation in R. R package version 1.15.1.
+
+\end{thebibliography}
+
+\end{document}
+
+# vim: ts=2 sw=2
