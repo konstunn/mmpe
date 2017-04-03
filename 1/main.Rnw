@@ -71,7 +71,7 @@
 
 Ознакомиться с прямой процедурой синтеза непрерывных планов эксперимента.
 
-\subsection{Задание к лабораторной работе}
+\section{Задание к лабораторной работе}
 
 \begin{enumerate}
 	\item Написать программу, реализующую прямую градиентную процедуру
@@ -86,7 +86,7 @@
 
 \section{Ход работы}
 
-\subsubsection{Вспомогательные процедуры}
+\subsection{Вспомогательные процедуры}
 
 <<chunk-opts-set>>=
 opts_chunk$set(warning=T, purl=F)
@@ -100,7 +100,7 @@ genInitData <- function(s)
 	# TODO: generate non-singular initial plan!
 
 	# number of input signals in the plan
-	q <- s * (s + 1) / 2 + 1
+	q <- s2q(s)
 
 	# model parameters (theta)
 	th <- runif(s, min=-1, max=1)
@@ -109,7 +109,7 @@ genInitData <- function(s)
 	a <- runif(s*q, min=-1, max=1)
 	# NOTE: from -1 to 1
 
-	A <- matrix(a, byrow=T, nrow=q)
+	A <- matrix(a, nrow=q)
 
 	# initial random weights
 	p <- runif(q)
@@ -154,32 +154,17 @@ mldm <- function(u, th)
 }
 @
 
-<<chunk>>=
-set.seed(104)
-
-# number of parameters
-s <- 2
-
-L <- genInitData(s)
-
-# print initial data
-(A <- L$A)
-(p <- L$p)
-q <- L$q
-th <- L$th
-
-(val <- mldm(c(A, p), th))
-@
-
 <<constraints, purl=T>>=
 # equalities constraints
 heq <- function(u) {
+	# FIXME: q - global variable
 	p <- tail(u, n=q)
 	return(sum(p) - 1)
 }
 
 # inequalities constraints
 hin <- function(u) {
+	# FIXME: q is global variable
 	p <- tail(u, n=q)
 	a <- head(u, n=-q)
 	alen <- length(a)
@@ -190,10 +175,34 @@ hin <- function(u) {
 }
 @
 
+\subsection{Начальный план}
+
+<<chunk>>=
+set.seed(104)
+
+# number of parameters
+s <- 2
+
+l <- genInitData(s)
+th <- l$th
+
+# print initial data
+l$A
+l$p
+
+(val <- mldm(c(l$A, l$p), l$th))
+@
+
+Значение критерия: \Sexpr{val}
+
+\newpage
+\subsection{Нахождение оптимального плана}
+
 <<solve, warning=T>>=
 library(nloptr)
-l <- nl.opts(list(xtol_rel = 1e-8, maxeval=3000))
-(l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, th=th))
+
+q <- s2q(length(l$th))
+ll <- slsqp(c(l$A, l$p), mldm, hin=hin, heq=heq, th=l$th)
 @
 
 <<sqp2plan, purl=T>>=
@@ -209,7 +218,7 @@ sqp2plan <- function(l, q) {
 
 <<solution>>=
 # print plan
-l <- sqp2plan(l, q)
+l <- sqp2plan(ll, q)
 (val <- l$value)
 
 (p <- l$p)
@@ -218,7 +227,7 @@ l <- sqp2plan(l, q)
 
 Значение критерия: \Sexpr{val}
 
-\subsubsection{Очистка оптимального плана}
+\subsection{Очистка оптимального плана}
 
 <<clean-plan>>=
 # find point with minimal weight
@@ -253,10 +262,9 @@ optplan <- function(s) {
 }
 @
 
-\subsubsection{Теоретический оптимальный план}
+\subsection{Теоретический оптимальный план}
 
 <<optplan>>=
-# TODO: extract to function
 l <- optplan(s)
 q <- l$q
 (p <- l$p)
@@ -268,14 +276,17 @@ q <- l$q
 Значение критерия: \Sexpr{val}
 
 \newpage
-\subsubsection{Начальный план - субоптимальный план}
+\subsection{Начальный план - субоптимальный план}
 
 <<subopt>>=
 A <- A * 0.8
 (val <- mldm(c(A, p), th))
-(l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, th=th))
+l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, th=th)
 (l <- sqp2plan(l, q))
+val <- l$value
 @
+
+Значение критерия: \Sexpr{val}
 
 \section*{Заключение}
 
