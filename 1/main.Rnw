@@ -91,6 +91,8 @@ opts_chunk$set(warning=T, purl=F)
 @
 
 <<functions, purl=T>>=
+s2q <- function(s) s * (s + 1) / 2 + 1
+
 genInitData <- function(s)
 {
 	# TODO: generate non-singular initial plan!
