@@ -146,6 +146,18 @@ mldm <- function(u, th)
 }
 @
 
+<<optplan-function, purl=T>>=
+optplan <- function(s) {
+	l <- list(c(-1,1))
+	l <- rep(l, s)
+	dfeg <- expand.grid(l)
+	q <- 2^s
+	p <- rep(1/q, q)
+	A <- data.matrix(dfeg)
+	return(list(A=A, p=p, q=q))
+}
+@
+
 <<constraints, purl=T>>=
 # equalities constraints
 heq <- function(u) {
@@ -187,11 +199,26 @@ l$p
 
 Значение критерия: \Sexpr{val}
 
+\subsection{Теоретический оптимальный план}
+
+<<optplan>>=
+ll <- l
+l <- optplan(s)
+q <- l$q
+(p <- l$p)
+(A <- l$A)
+
+(val <- mldm(c(A, p), th))
+@
+
+Значение критерия: \Sexpr{val}
+
 \newpage
 \subsection{Нахождение оптимального плана}
 
 <<solve, warning=T>>=
 library(nloptr)
+l <- ll
 
 q <- s2q(length(l$th))
 ll <- slsqp(c(l$A, l$p), mldm, hin=hin, heq=heq, th=l$th)
@@ -222,6 +249,7 @@ l <- sqp2plan(ll, q)
 \subsection{Очистка оптимального плана}
 
 <<clean-plan>>=
+# TODO: improve
 i <- which(p == min(p))
 p[i]
 
@@ -235,31 +263,6 @@ p
 A
 
 # criterion value
-(val <- mldm(c(A, p), th))
-@
-
-Значение критерия: \Sexpr{val}
-
-<<optplan-function, purl=T>>=
-optplan <- function(s) {
-	l <- list(c(-1,1))
-	l <- rep(l, s)
-	dfeg <- expand.grid(l)
-	q <- 2^s
-	p <- rep(1/q, q)
-	A <- data.matrix(dfeg)
-	return(list(A=A, p=p, q=q))
-}
-@
-
-\subsection{Теоретический оптимальный план}
-
-<<optplan>>=
-l <- optplan(s)
-q <- l$q
-(p <- l$p)
-(A <- l$A)
-
 (val <- mldm(c(A, p), th))
 @
 
