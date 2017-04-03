@@ -179,13 +179,10 @@ hin <- function(u) {
 	p <- tail(u, n=q)
 	a <- head(u, n=-q)
 	alen <- length(a)
-	cond <- p > rep(0, q)
-	cond <- c(cond, a > rep(-1, alen))
-	cond <- c(cond, a < rep(1, alen))
-	if (all(cond))
-		return(1)
-	else
-		return(-1)
+	h <- p - rep(10 * .Machine$double.eps, length(p))
+	h <- c(h, 1 - a)
+	h <- c(h, a + 1)
+	return(h)
 }
 @
 
