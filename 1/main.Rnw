@@ -109,14 +109,14 @@ genInitData <- function(s)
 
 	A <- matrix(a, nrow=q)
 
-	p <- runif(q)
+	p <- rep(1/q, q)
 
-	p <- p / sum(p)
-
+	# NOTE: q not needed
 	return(list(th=th, A=A, p=p, q=q))
 }
 
 # information matrix
+# TODO: add intercept
 M <- function(a, th)
 {
 	f <- th * a
@@ -155,9 +155,10 @@ optplan <- function(s) {
 	l <- list(c(-1,1))
 	l <- rep(l, s)
 	dfeg <- expand.grid(l)
-	q <- 2^s
+	q <- s2q(s)
 	p <- rep(1/q, q)
 	A <- data.matrix(dfeg)
+	A <- A[1:q,]
 	return(list(A=A, p=p, q=q))
 }
 @
@@ -176,17 +177,22 @@ hin <- function(u) {
 	p <- tail(u, n=q)
 	a <- head(u, n=-q)
 	alen <- length(a)
-	h <- p - rep(10 * .Machine$double.eps, length(p))
+	h <- p - rep(1e-9, length(p))
 	h <- c(h, 1 - a)
 	h <- c(h, a + 1)
 	return(h)
 }
 @
 
+
 \subsection{Начальный план}
 
 <<chunk>>=
-set.seed(104)
+# set seed
+t <- as.numeric(Sys.time())
+seed <- 1e8 * (t - floor(t))
+
+set.seed(104);
 
 # number of parameters
 s <- 2
@@ -203,6 +209,7 @@ l$p
 
 Значение критерия: \Sexpr{val}
 
+
 \subsection{Теоретический оптимальный план}
 
 <<optplan>>=
@@ -217,15 +224,19 @@ q <- l$q
 
 Значение критерия: \Sexpr{val}
 
-\newpage
+
 \subsection{Нахождение оптимального плана}
 
-<<solve, warning=T>>=
+<<solve, warning=F>>=
 library(nloptr)
 l <- ll
 
-q <- s2q(length(l$th))
+q <- s2q(s)
 ll <- slsqp(c(l$A, l$p), mldm, hin=hin, heq=heq, th=l$th)
+ll$value
+ll$iter
+ll$convergence
+strwrap(ll$message)
 @
 
 <<sqp2plan, purl=T>>=
@@ -250,6 +261,7 @@ l <- sqp2plan(ll, q)
 
 Значение критерия: \Sexpr{val}
 
+
 \subsection{Очистка оптимального плана}
 
 <<clean-plan>>=
@@ -272,6 +284,60 @@ A
 
 Значение критерия: \Sexpr{val}
 
+
+\subsection{Округление непрерывного плана до дискретного}
+
+<<round-plan>>=
+roundP <- function(p, v)
+{
+	q <- length(p)
+
+	# 1
+	sigmaI <- ceiling((v - q) * p)
+	sigmaII <- floor(v*p)
+
+	# 2
+	vI <- v - sum(sigmaI)
+	vII <- v - sum(sigmaII)
+
+	if (vI < vII) {
+		sigma <- sigmaI
+		v1 <- vI
+	} else {
+		sigma <- sigmaII
+		v1 <- vII
+	}
+
+	s <- rep(NA, q)
+
+	# 3
+	vps <- v*p - sigma
+	vpss <- sort(vps, decreasing=T)
+	j <- 1
+
+	repeat {
+		# 4
+		if (vps[j] %in% vpss[1:v1])
+			s[j] <- 1
+		else
+			s[j] <- 0
+
+		# 5
+		if (j < q)
+			j <- j + 1
+		else
+			break
+	}
+
+	p <- (sigma + s) / rep(v, q)
+	return(p)
+}
+
+l$p
+v <- 15
+(p <- roundP(l$p, v)) * v
+@
+
 \section*{Заключение}
 
 Заключение.
@@ -282,12 +348,13 @@ A
 
 \bibitem{mono} Активная параметрическая идентификация стохастических линейных
 	систем: монография / В.И. Денисов, В.М. Чубич, О.С. Черникова, Д.И. Бобылева.
-		--- Новосибирск : Изд-во НГТУ, 2009. --- 192 с. (Серия <<Монографии НГТУ>>).
+		--- Новосибирск : Изд-во НГТУ, 2009. --- 192 с.
+		(Серия <<Монографии НГТУ>>).
 
 \end{sloppypar}
 
-\bibitem{knitr16} Yihui Xie (2016). knitr: A General-Purpose Package for Dynamic
-	Report Generation in R. R package version 1.15.1.
+\bibitem{knitr16} Yihui Xie (2016). knitr: A General-Purpose Package for
+	Dynamic Report Generation in R. R package version 1.15.1.
 
 \end{thebibliography}
 
