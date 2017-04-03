@@ -97,24 +97,16 @@ s2q <- function(s) s * (s + 1) / 2 + 1
 
 genInitData <- function(s)
 {
-	# TODO: generate non-singular initial plan!
-
-	# number of input signals in the plan
 	q <- s2q(s)
 
-	# model parameters (theta)
 	th <- runif(s, min=-1, max=1)
 
-	# input data (alpha)
 	a <- runif(s*q, min=-1, max=1)
-	# NOTE: from -1 to 1
 
 	A <- matrix(a, nrow=q)
 
-	# initial random weights
 	p <- runif(q)
 
-	# normalize
 	p <- p / sum(p)
 
 	return(list(th=th, A=A, p=p, q=q))
@@ -230,17 +222,15 @@ l <- sqp2plan(ll, q)
 \subsection{Очистка оптимального плана}
 
 <<clean-plan>>=
-# find point with minimal weight
 i <- which(p == min(p))
-p[i] # weight of the point to remove
-A <- A[-i,] # remove the point
+p[i]
 
-# redistribute weights
+A <- A[-i,]
+
 p <- p + rep(p[i] / (q-1), length(p))
 
 p <- p[-i]
 
-# print plan
 p
 A
 
