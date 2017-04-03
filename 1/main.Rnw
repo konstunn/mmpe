@@ -265,19 +265,6 @@ q <- l$q
 
 Значение критерия: \Sexpr{val}
 
-\newpage
-\subsection{Начальный план - субоптимальный план}
-
-<<subopt>>=
-A <- A * 0.8
-(val <- mldm(c(A, p), th))
-l <- slsqp(c(A, p), mldm, hin=hin, heq=heq, th=th)
-(l <- sqp2plan(l, q))
-val <- l$value
-@
-
-Значение критерия: \Sexpr{val}
-
 \section*{Заключение}
 
 Заключение.
