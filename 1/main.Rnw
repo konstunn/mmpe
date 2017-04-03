@@ -84,12 +84,16 @@
 		варьируемых параметров.
 \end{enumerate}
 
+
 \section{Ход работы}
+
 
 \subsection{Вспомогательные процедуры}
 
-<<chunk-opts-set>>=
-opts_chunk$set(warning=T, purl=F)
+<<options, echo=FALSE, cache=FALSE>>=
+opts_chunk$set(warning=TRUE, purl=FALSE, cache=TRUE, autodep=TRUE)
+dep_auto()
+options(digits=5, width=60)
 @
 
 <<functions, purl=T>>=
