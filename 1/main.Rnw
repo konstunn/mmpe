@@ -86,6 +86,8 @@
 
 \section{Ход работы}
 
+\subsubsection{Вспомогательные процедуры}
+
 <<chunk-opts-set>>=
 opts_chunk$set(warning=T, purl=F)
 @
@@ -216,6 +218,8 @@ l <- sqp2plan(l, q)
 
 Значение критерия: \Sexpr{val}
 
+\subsubsection{Очистка оптимального плана}
+
 <<clean-plan>>=
 # find point with minimal weight
 i <- which(p == min(p))
@@ -249,6 +253,8 @@ optplan <- function(s) {
 }
 @
 
+\subsubsection{Теоретический оптимальный план}
+
 <<optplan>>=
 # TODO: extract to function
 l <- optplan(s)
@@ -260,6 +266,9 @@ q <- l$q
 @
 
 Значение критерия: \Sexpr{val}
+
+\newpage
+\subsubsection{Начальный план - субоптимальный план}
 
 <<subopt>>=
 A <- A * 0.8
