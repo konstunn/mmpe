@@ -1,0 +1,24 @@
+\documentclass{article}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8x]{inputenc}
+
+\usepackage{textgreek}
+
+\begin{document}
+
+<<>>=
+α <- 1
+β <- 2
+γ <- α + β
+α
+β
+γ
+a <- 1
+b <- 2
+c <- 3
+d <- a + b + c
+a
+@
+
+\end{document}
