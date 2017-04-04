@@ -22,6 +22,8 @@
 
 \usepackage{indentfirst}
 
+\usepackage{textgreek}
+
 \setlist[description]{leftmargin=\parindent,labelindent=\parindent}
 
 \begin{document}
@@ -87,6 +89,7 @@
 
 \section{Ход работы}
 
+ξ
 
 \subsection{Вспомогательные процедуры}
 
@@ -94,6 +97,20 @@
 opts_chunk$set(warning=TRUE, purl=FALSE, cache=TRUE, autodep=TRUE)
 dep_auto()
 options(digits=5, width=60)
+@
+
+<<>>=
+α <- 1
+β <- 2
+γ <- α + β
+α
+β
+γ
+a <- 1
+b <- 2
+c <- 3
+d <- a + b + c
+a
 @
 
 \section*{Заключение}
