@@ -198,7 +198,7 @@ set.seed(104);
 s <- 2
 
 l <- genInitData(s)
-th <- l$th
+(th <- l$th)
 
 # print initial data
 l$A
@@ -336,6 +336,7 @@ roundP <- function(p, v)
 l$p
 v <- 15
 (p <- roundP(l$p, v)) * v
+l$A
 @
 
 \section*{Заключение}
