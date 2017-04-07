@@ -3,12 +3,10 @@ R_OPTS=--vanilla
 
 .PHONY: main.tex
 
-all: main.pdf
-
-%.pdf: %.tex Makefile
+main.pdf: main.tex
 	latexmk -pdf $<
 
-%.tex: %.Rnw Makefile
+main.tex: main.Rnw
 	R ${R_OPTS} \
 		-e "library(knitr)" \
 		-e "knit('$<')"
