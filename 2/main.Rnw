@@ -99,18 +99,101 @@ dep_auto()
 options(digits=5, width=60)
 @
 
+<<optplan-function, purl=T>>=
+optplan <- function(s) {
+	l <- list(c(-1,1))
+	l <- rep(l, s)
+	dfeg <- expand.grid(l)
+	q <- s2q(s)
+	p <- rep(1/q, q)
+	A <- data.matrix(dfeg)
+	A <- A[1:q,]
+	return(list(A=A, p=p, q=q))
+}
+@
+
 <<>>=
-α <- 1
-β <- 2
-γ <- α + β
-α
-β
-γ
-a <- 1
-b <- 2
-c <- 3
-d <- a + b + c
-a
+s2q <- function(s) s * (s + 1) / 2 + 1
+
+genInitData <- function(s)
+{
+	q <- s2q(s)
+
+	th <- runif(s, min=-1, max=1)
+
+	a <- runif(s*q, min=-1, max=1)
+
+	A <- matrix(a, nrow=q)
+
+	p <- rep(1/q, q)
+
+	# NOTE: q not needed
+	return(list(th=th, A=A, p=p, q=q))
+}
+
+# information matrix
+# TODO: add intercept
+M <- function(a, th)
+{
+	f <- th * a
+	rez <- f %*% t(f)
+	return(rez)
+}
+
+Mxi <- function(u, th)
+{
+	q <- length(u) / (length(th) + 1)
+
+	a <- head(u, n=-q)
+
+	p <- tail(u, n=q)
+
+	A <- matrix(a, nrow=q)
+
+	# list of matrices for every point of the plan
+	Mi <- plyr::alply(A, 1, M, th=th)
+
+	# multiply by weights 'p'
+	Mi <- Map('*', Mi, p)
+
+	# normalized information matrix
+	Mxi <- Reduce('+', Mi)
+
+	return(Mxi)
+}
+
+# u = c(A,p)
+X <- function(u, th)
+{
+	Mxi <- Mxi(u, th)
+
+	return(-log(det(Mxi)))
+}
+
+Sp <- function(x) sum(diag(x))
+
+μ <- function(a, Mxi, th) Sp(solve(Mxi) %*% M(a, th))
+@
+
+<<constraints, purl=T>>=
+# equalities constraints
+heq <- function(u) {
+	# FIXME: q - global variable
+	p <- tail(u, n=q)
+	return(sum(p) - 1)
+}
+
+# inequalities constraints
+hin <- function(u) {
+	# FIXME: q is global variable
+	p <- tail(u, n=q)
+	a <- head(u, n=-q)
+	alen <- length(a)
+	h <- p - rep(1e-9, length(p))
+	h <- c(h, 1 - a)
+	h <- c(h, a + 1)
+	return(h)
+}
 @
 
 \section*{Заключение}
