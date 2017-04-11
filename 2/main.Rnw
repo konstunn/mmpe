@@ -125,8 +125,7 @@ genInitData <- function(s)
 
 	p <- rep(1/q, q)
 
-	# NOTE: q not needed
-	return(list(th=th, A=A, p=p, q=q))
+	return(list(th=th, A=A, p=p))
 }
 
 # information matrix
