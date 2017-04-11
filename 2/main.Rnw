@@ -89,8 +89,6 @@
 
 \section{Ход работы}
 
-ξ
-
 \subsection{Вспомогательные процедуры}
 
 <<options, echo=FALSE, cache=FALSE>>=
@@ -112,7 +110,7 @@ optplan <- function(s) {
 }
 @
 
-<<>>=
+<<functions>>=
 s2q <- function(s) s * (s + 1) / 2 + 1
 
 genInitData <- function(s)
@@ -173,6 +171,125 @@ X <- function(u, th)
 Sp <- function(x) sum(diag(x))
 
 μ <- function(a, Mxi, th) Sp(solve(Mxi) %*% M(a, th))
+
+#η <- s
+
+hina <- function(a)
+{
+	h <- 1 - a
+	h <- c(h, a + 1)
+	return(h)
+}
+
+Xτ <- function(τ, a, u, th)
+{
+	s <- length(th)
+	q <- s2q(s)
+	p <- tail(u, n=q)
+	A <- head(u, n=-q)
+	A <- matrix(A, nrow=q)
+
+	A <- rbind(A, a)
+	p <- p - τ / q
+	p <- c(p, τ)
+
+	Xτ <- X(c(A, p), th)
+
+	return(Xτ)
+}
+
+dualproc <- function(A, p, th)
+{
+	library(nloptr)
+	library(RANN)
+
+	δ <- 1e-6
+	s <- length(th)
+	η <- s
+
+	# 1
+	Mxi <- Mxi(c(A, p), th)
+
+	a <- rep(0, length(th))
+
+	repeat {
+		repeat {
+			# 2
+			l <- slsqp(a, function(a, Mxi, th) -μ(a, Mxi, th), hin=hina, Mxi=Mxi,
+								 th=th) # NOTE: should initial 'a' be changed?
+			a <- l$par
+
+			if (abs(μ(a, Mxi, th) - η) <= δ)
+				return(list(A=A, p=p))
+
+			if (μ(a, Mxi, th) > η)
+				break
+			# else go to 2
+		}
+
+		# 3
+		l <- slsqp(0, Xτ, hin=function(τ) c(τ, 1 - τ), a=a, u=c(A, p), th=th)
+		τ <- l$par
+
+		# 4: add 'a' to plan
+		A <- rbind(A, a)
+		p <- c(p, τ)
+
+		l <- clean(list(A=A, p=p))
+		A <- l$A
+		p <- l$p
+
+		# and continue
+	}
+	return(list(A=A, p=p))
+}
+@
+
+<<clean-plan>>=
+clean <- function(l)
+{
+	dp <- 1e-2
+	dn <- 1e-2
+	A <- l$A
+	p <- l$p
+	q <- length(p)
+
+	# clean by weight
+	i <- which(p <= dp)
+	if (length(i) != 0) {
+		p[-i] <- p[-i] + sum(p[i]) / length(p[-i])
+		p <- p[-i]
+		A <- A[-i]
+	}
+
+	# clean by distance
+	i <- 1
+	while (i <= q - 1)
+	{
+		j <- i + 1
+		while (j <= q)
+		{
+			r <- A[i,] - A[j,]
+			n <- norm(r, 'F')
+			if (n <= dn)
+			{
+				# merge i and j points
+				px <- sum(p[c(i,j)])
+				x <- 1 / px * (p[i] * A[i,] + p[j] * A[j,])
+				A <- A[-c(i,j),]
+				A <- rbind(A, x)
+				p <- p[-c(i,j)]
+				p <- c(p, px)
+				i <- i - 1
+				j <- j - 1
+				q <- q - 1
+			}
+			j <- j + 1
+		}
+		i <- i + 1
+	}
+	return(list(A=A, p=p))
+}
 @
 
 <<constraints, purl=T>>=
@@ -188,13 +305,20 @@ hin <- function(u) {
 	# FIXME: q is global variable
 	p <- tail(u, n=q)
 	a <- head(u, n=-q)
-	alen <- length(a)
 	h <- p - rep(1e-9, length(p))
 	h <- c(h, 1 - a)
 	h <- c(h, a + 1)
 	return(h)
 }
 @
+
+\subsection{Начальный план}
+
+
+
+\subsection{Нахождение оптимального плана}
+
+
 
 \section*{Заключение}
 
