@@ -170,9 +170,11 @@ X <- function(u, th)
 
 Sp <- function(x) sum(diag(x))
 
-μ <- function(a, Mxi, th) Sp(solve(Mxi) %*% M(a, th))
-
-#η <- s
+mu <- function(a, Mxi, th)
+{
+	rez <- Sp(solve(Mxi) %*% M(a, th))
+	return(rez)
+}
 
 hina <- function(a)
 {
@@ -181,7 +183,7 @@ hina <- function(a)
 	return(h)
 }
 
-Xτ <- function(τ, a, u, th)
+Xtau <- function(tau, a, u, th)
 {
 	s <- length(th)
 	q <- s2q(s)
@@ -190,12 +192,12 @@ Xτ <- function(τ, a, u, th)
 	A <- matrix(A, nrow=q)
 
 	A <- rbind(A, a)
-	p <- p - τ / q
-	p <- c(p, τ)
+	p <- p - tau / q
+	p <- c(p, tau)
 
-	Xτ <- X(c(A, p), th)
+	Xtau <- X(c(A, p), th)
 
-	return(Xτ)
+	return(Xtau)
 }
 
 dualproc <- function(A, p, th)
@@ -203,9 +205,9 @@ dualproc <- function(A, p, th)
 	library(nloptr)
 	library(RANN)
 
-	δ <- 1e-6
+	d <- 1e-6
 	s <- length(th)
-	η <- s
+	eta <- s
 
 	# 1
 	Mxi <- Mxi(c(A, p), th)
@@ -215,25 +217,26 @@ dualproc <- function(A, p, th)
 	repeat {
 		repeat {
 			# 2
-			l <- slsqp(a, function(a, Mxi, th) -μ(a, Mxi, th), hin=hina, Mxi=Mxi,
-								 th=th) # NOTE: should initial 'a' be changed?
+			l <- slsqp(a, function(a, Mxi, th) -mu(a, Mxi, th), hin=hina, Mxi=Mxi,
+								 th=th)
 			a <- l$par
 
-			if (abs(μ(a, Mxi, th) - η) <= δ)
+			if (abs(mu(a, Mxi, th) - eta) <= d)
 				return(list(A=A, p=p))
 
-			if (μ(a, Mxi, th) > η)
+			if (mu(a, Mxi, th) > eta)
 				break
 			# else go to 2
 		}
 
 		# 3
-		l <- slsqp(0, Xτ, hin=function(τ) c(τ, 1 - τ), a=a, u=c(A, p), th=th)
-		τ <- l$par
+		l <- slsqp(0, Xtau, hin=function(tau) c(tau, 1 - tau), a=a, u=c(A, p),
+							 th=th)
+		tau <- l$par
 
 		# 4: add 'a' to plan
 		A <- rbind(A, a)
-		p <- c(p, τ)
+		p <- c(p, tau)
 
 		l <- clean(list(A=A, p=p))
 		A <- l$A
