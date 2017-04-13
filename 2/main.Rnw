@@ -182,16 +182,10 @@ hina <- function(a)
 	return(h)
 }
 
-Xtau <- function(tau, a, u, th)
+Xtau <- function(tau, a, A, p, th)
 {
-	s <- length(th)
-	q <- s2q(s)
-	p <- tail(u, n=q)
-	A <- head(u, n=-q)
-	A <- matrix(A, nrow=q)
-
 	A <- rbind(A, a)
-	p <- p - tau / q
+	p <- p - tau / length(p)
 	p <- c(p, tau)
 
 	Xtau <- X(c(A, p), th)
@@ -199,49 +193,56 @@ Xtau <- function(tau, a, u, th)
 	return(Xtau)
 }
 
-dualproc <- function(A, p, th)
+dualproc <- function(l)
 {
 	library(nloptr)
 	library(RANN)
 
 	d <- 1e-6
+	th <- l$th
 	s <- length(th)
 	eta <- s
 
-	# 1
-	Mxi <- Mxi(c(A, p), th)
-
-	a <- rep(0, length(th))
+	A <- l$A
+	p <- l$p
 
 	repeat {
 		repeat {
+			# 1
+			# NOTE: got questions!
+			Mxi <- Mxi(c(A, p), th)
+			a <- runif(s, min=-1, max=1)
 			# 2
-			l <- slsqp(a, function(a, Mxi, th) -mu(a, Mxi, th), hin=hina, Mxi=Mxi,
-								 th=th)
-			a <- l$par
+			a <- slsqp(a, function(a, Mxi, th) -mu(a, Mxi, th), hin=hina, Mxi=Mxi,
+								 th=th)$par
 
 			if (abs(mu(a, Mxi, th) - eta) <= d)
 				return(list(A=A, p=p))
 
 			if (mu(a, Mxi, th) > eta)
 				break
-			# else go to 2
+
+			# else
+			a <- runif(s, min=-1, max=1)
+			# and go to 2
 		}
 
+		hint <- function(tau) c(tau - 1e-12, 1 - 1e-12 - tau)
+
 		# 3
-		l <- slsqp(0, Xtau, hin=function(tau) c(tau, 1 - tau), a=a, u=c(A, p),
-							 th=th)
-		tau <- l$par
+		tau <- slsqp(x0=runif(1), fn=Xtau, hin=hint, a=a, A=A, p=p, th=th)$par
 
 		# 4: add 'a' to plan
-		A <- rbind(A, a)
+		p <- p - tau / nrow(A)
 		p <- c(p, tau)
+		A <- rbind(A, a)
 
 		l <- clean(list(A=A, p=p))
 		A <- l$A
 		p <- l$p
 
 		# and continue
+		a <- runif(s, min=-1, max=1)
 	}
 	return(list(A=A, p=p))
 }
@@ -254,37 +255,37 @@ clean <- function(l)
 	dn <- 1e-2
 	A <- l$A
 	p <- l$p
-	q <- length(p)
 
 	# clean by weight
 	i <- which(p <= dp)
 	if (length(i) != 0) {
 		p[-i] <- p[-i] + sum(p[i]) / length(p[-i])
 		p <- p[-i]
-		A <- A[-i]
+		A <- as.matrix(A[-i,])
 	}
 
 	# clean by distance
 	i <- 1
-	while (i <= q - 1)
+	while (i <= nrow(A) - 1)
 	{
 		j <- i + 1
-		while (j <= q)
+		while (j <= nrow(A))
 		{
 			r <- A[i,] - A[j,]
-			n <- norm(r, 'F')
+			n <- norm(as.matrix(r), 'F')
 			if (n <= dn)
 			{
 				# merge i and j points
 				px <- sum(p[c(i,j)])
 				x <- 1 / px * (p[i] * A[i,] + p[j] * A[j,])
-				A <- A[-c(i,j),]
+				A <- as.matrix(A[-c(i,j),])
 				A <- rbind(A, x)
 				p <- p[-c(i,j)]
 				p <- c(p, px)
 				i <- i - 1
+				if (i < 1) i <- 1
 				j <- j - 1
-				q <- q - 1
+				if (j < 1) j <- 1
 			}
 			j <- j + 1
 		}
@@ -296,11 +297,17 @@ clean <- function(l)
 
 \subsection{Начальный план}
 
-
+<<initial-plan>>=
+s <- 1
+l <- genInitData(s)
+l
+@
 
 \subsection{Нахождение оптимального плана}
 
-
+<<>>=
+#dualproc(l)
+@
 
 \section*{Заключение}
 
