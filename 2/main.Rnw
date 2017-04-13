@@ -91,10 +91,10 @@
 
 \subsection{Вспомогательные процедуры}
 
-<<options, echo=FALSE, cache=FALSE>>=
-opts_chunk$set(warning=TRUE, purl=FALSE, cache=TRUE, autodep=TRUE)
+<<options, echo=FALSE, cache=FALSE, purl=F>>=
+opts_chunk$set(warning=TRUE, purl=FALSE, cache=TRUE, autodep=T, tidy=T)
+options(digits=5, width=60, formatR.indent=4)
 dep_auto()
-options(digits=5, width=60)
 @
 
 <<optplan-function, purl=T>>=
@@ -110,7 +110,7 @@ optplan <- function(s) {
 }
 @
 
-<<functions>>=
+<<functions, purl=T>>=
 s2q <- function(s) s * (s + 1) / 2 + 1
 
 genInitData <- function(s)
@@ -247,7 +247,7 @@ dualproc <- function(A, p, th)
 }
 @
 
-<<clean-plan>>=
+<<clean-plan, purl=T>>=
 clean <- function(l)
 {
 	dp <- 1e-2
