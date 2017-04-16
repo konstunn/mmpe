@@ -276,7 +276,7 @@ clean <- function(l)
 	if (length(i) != 0) {
 		p[-i] <- p[-i] + sum(p[i]) / length(p[-i])
 		p <- p[-i]
-		A <- as.matrix(A[-i,])
+		A <- A[-i, , drop=FALSE]
 	}
 
 	# clean by distance
@@ -293,7 +293,7 @@ clean <- function(l)
 				# merge i and j points
 				px <- sum(p[c(i,j)])
 				x <- 1 / px * (p[i] * A[i,] + p[j] * A[j,])
-				A <- as.matrix(A[-c(i,j),])
+				A <- A[-c(i,j), , drop=FALSE]
 				A <- rbind(A, x)
 				p <- p[-c(i,j)]
 				p <- c(p, px)
