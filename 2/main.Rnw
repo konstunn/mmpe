@@ -220,22 +220,24 @@ dualproc <- function(l)
 
 		repeat {
 			a <- runif(s, min=-1, max=1)
+
 			# 2
-			a <- slsqp(a, function(a, Mxi, th) -mu(a, Mxi, th), hin=hina, Mxi=Mxi,
-								 th=th)$par
+			l <- slsqp(a, function(a, Mxi, th) -mu(a, Mxi, th), hin=hina, Mxi=Mxi,
+								 th=th, control=nlopts)
+			a <- l$par
+			mu <- -l$value
 
-			if (abs(mu(a, Mxi, th) - eta) <= d)
-				return(list(A=A, p=p))
+			if (abs(mu - eta) <= d) {
+				criterion <- X(c(A, p), th)
+				return(list(A=A, p=p, criterion=criterion))
+			}
 
-			if (mu(a, Mxi, th) > eta)
+			if (mu > eta)
 				break
-
-			# else
-			a <- runif(s, min=-1, max=1)
-			# and go to 2
+			# else go to 2
 		}
 
-		hint <- function(tau) c(tau - 1e-12, 1 - 1e-12 - tau)
+		hint <- function(tau) c(tau - 1e-11, 1 - 1e-11 - tau)
 
 		# 3
 		repeat {
@@ -256,7 +258,6 @@ dualproc <- function(l)
 		p <- l$p
 
 		# and continue
-		a <- runif(s, min=-1, max=1)
 	}
 	return(list(A=A, p=p))
 }
