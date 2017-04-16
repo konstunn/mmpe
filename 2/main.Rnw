@@ -117,13 +117,18 @@ genInitData <- function(s)
 {
 	q <- s2q(s)
 
+	p <- rep(1/q, q)
+
 	th <- runif(s, min=-1, max=1)
 
-	a <- runif(s*q, min=-1, max=1)
+	repeat {
+		a <- runif(s*q, min=-1, max=1)
 
-	A <- matrix(a, nrow=q)
+		A <- matrix(a, nrow=q)
 
-	p <- rep(1/q, q)
+		if (!is.na(X(c(A, p), th)))
+				break
+	}
 
 	return(list(th=th, A=A, p=p))
 }
