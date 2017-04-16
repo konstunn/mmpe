@@ -126,11 +126,13 @@ genInitData <- function(s)
 
 		A <- matrix(a, nrow=q)
 
-		if (!is.na(X(c(A, p), th)))
+		criterion <- X(c(A, p), th)
+		if (!is.na(criterion))
 				break
 	}
 
-	return(list(th=th, A=A, p=p))
+
+	return(list(th=th, A=A, p=p, criterion=criterion))
 }
 
 # information matrix
