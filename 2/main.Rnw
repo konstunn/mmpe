@@ -192,7 +192,8 @@ hina <- function(a)
 Xtau <- function(tau, a, A, p, th)
 {
 	A <- rbind(A, a)
-	p <- p - tau / length(p)
+
+	p <- p * (1 - tau)
 	p <- c(p, tau)
 
 	Xtau <- X(c(A, p), th)
@@ -249,8 +250,9 @@ dualproc <- function(l)
 								 control=nlopts)$par
 
 		# 4: add 'a' to plan
-		p <- p - tau / nrow(A)
+		p <- p * (1 - tau)
 		p <- c(p, tau)
+
 		A <- rbind(A, a)
 
 		l <- clean(list(A=A, p=p))
