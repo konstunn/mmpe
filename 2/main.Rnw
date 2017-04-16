@@ -238,7 +238,13 @@ dualproc <- function(l)
 		hint <- function(tau) c(tau - 1e-12, 1 - 1e-12 - tau)
 
 		# 3
-		tau <- slsqp(x0=runif(1), fn=Xtau, hin=hint, a=a, A=A, p=p, th=th)$par
+		repeat {
+			x0 <- runif(1)
+			if (!is.nan(Xtau(x0, a, A, p, th)))
+				break
+		}
+		tau <- slsqp(x0, fn=Xtau, hin=hint, a=a, A=A, p=p, th=th,
+								 control=nlopts)$par
 
 		# 4: add 'a' to plan
 		p <- p - tau / nrow(A)
