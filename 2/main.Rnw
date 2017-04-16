@@ -203,7 +203,8 @@ Xtau <- function(tau, a, A, p, th)
 dualproc <- function(l)
 {
 	library(nloptr)
-	library(RANN)
+
+	nlopts <- list(xtol_rel=1e-12, maxeval=1e4)
 
 	d <- 1e-6
 	th <- l$th
@@ -214,10 +215,10 @@ dualproc <- function(l)
 	p <- l$p
 
 	repeat {
+		# 1
+		Mxi <- Mxi(c(A, p), th)
+
 		repeat {
-			# 1
-			# NOTE: got questions!
-			Mxi <- Mxi(c(A, p), th)
 			a <- runif(s, min=-1, max=1)
 			# 2
 			a <- slsqp(a, function(a, Mxi, th) -mu(a, Mxi, th), hin=hina, Mxi=Mxi,
