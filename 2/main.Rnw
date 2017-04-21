@@ -86,6 +86,12 @@
 		варьируемых параметров.
 \end{enumerate}
 
+Модель:
+
+\[
+	y = \theta_1 x_1 + \theta_2 x_2 + \theta_3 x_3
+\]
+
 
 \section{Ход работы}
 
