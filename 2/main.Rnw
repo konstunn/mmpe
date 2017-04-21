@@ -92,9 +92,9 @@
 \subsection{Вспомогательные процедуры}
 
 <<options, echo=FALSE, cache=FALSE, purl=F>>=
-opts_chunk$set(warning=TRUE, purl=FALSE, cache=TRUE, autodep=T, tidy=T)
-options(digits=5, width=60, formatR.indent=4)
+opts_chunk$set(purl=FALSE, cache=TRUE, autodep=TRUE, tidy=TRUE)
 dep_auto()
+options(digits=5, width=60, formatR.indent=4)
 @
 
 <<optplan-function, purl=T>>=
@@ -130,7 +130,6 @@ genInitData <- function(s)
 		if (!is.na(criterion))
 				break
 	}
-
 
 	return(list(th=th, A=A, p=p, criterion=criterion))
 }
@@ -200,14 +199,63 @@ Xtau <- function(tau, a, A, p, th)
 
 	return(Xtau)
 }
+@
 
+<<clean-plan, purl=T>>=
+clean <- function(l)
+{
+	dp <- 5e-2
+	dn <- 6e-1
+	A <- l$A
+	p <- l$p
+
+	# clean by weight
+	i <- which(p <= dp)
+	if (length(i) != 0) {
+		p[-i] <- p[-i] + sum(p[i]) / length(p[-i])
+		p <- p[-i]
+		A <- A[-i, , drop=FALSE]
+	}
+
+	# clean by distance
+	i <- 1
+	while (i <= nrow(A) - 1)
+	{
+		j <- i + 1
+		while (j <= nrow(A))
+		{
+			r <- A[i,] - A[j,]
+			n <- norm(as.matrix(r), 'F')
+			if (n <= dn)
+			{
+				# merge i and j points
+				px <- sum(p[c(i,j)])
+				x <- 1 / px * (p[i] * A[i,] + p[j] * A[j,])
+				A <- A[-c(i,j), , drop=FALSE]
+				A <- rbind(A, x)
+				p <- p[-c(i,j)]
+				p <- c(p, px)
+				i <- i - 1
+				if (i < 1) i <- 1
+				j <- j - 1
+				if (j < 1) j <- 1
+			}
+			j <- j + 1
+		}
+		i <- i + 1
+	}
+	return(list(A=A, p=p))
+}
+@
+
+<<dualproc, purl=TRUE>>=
 dualproc <- function(l)
 {
 	library(nloptr)
 
-	nlopts <- list(xtol_rel=1e-12, maxeval=1e4)
+	nlopts <- list(xtol_rel=1e-6, maxeval=1e3)
 
-	d <- 1e-6
+	d <- 1e-10
 	th <- l$th
 	s <- length(th)
 	eta <- s
@@ -265,65 +313,19 @@ dualproc <- function(l)
 }
 @
 
-<<clean-plan, purl=T>>=
-clean <- function(l)
-{
-	dp <- 1e-2
-	dn <- 1e-2
-	A <- l$A
-	p <- l$p
-
-	# clean by weight
-	i <- which(p <= dp)
-	if (length(i) != 0) {
-		p[-i] <- p[-i] + sum(p[i]) / length(p[-i])
-		p <- p[-i]
-		A <- A[-i, , drop=FALSE]
-	}
-
-	# clean by distance
-	i <- 1
-	while (i <= nrow(A) - 1)
-	{
-		j <- i + 1
-		while (j <= nrow(A))
-		{
-			r <- A[i,] - A[j,]
-			n <- norm(as.matrix(r), 'F')
-			if (n <= dn)
-			{
-				# merge i and j points
-				px <- sum(p[c(i,j)])
-				x <- 1 / px * (p[i] * A[i,] + p[j] * A[j,])
-				A <- A[-c(i,j), , drop=FALSE]
-				A <- rbind(A, x)
-				p <- p[-c(i,j)]
-				p <- c(p, px)
-				i <- i - 1
-				if (i < 1) i <- 1
-				j <- j - 1
-				if (j < 1) j <- 1
-			}
-			j <- j + 1
-		}
-		i <- i + 1
-	}
-	return(list(A=A, p=p))
-}
-@
-
 \subsection{Начальный план}
 
 <<initial-plan>>=
-s <- 1
-l <- genInitData(s)
-l
+s <- 3
+l0 <- genInitData(s)
+l0
 @
 
 \subsection{Нахождение оптимального плана}
 
-<<>>=
-#dualproc(l)
+<<find-opt, warning=F>>=
+l <- dualproc(l0)
+l
 @
 
 \section*{Заключение}
