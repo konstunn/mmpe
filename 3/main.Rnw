@@ -1,0 +1,362 @@
+
+\documentclass[a4paper,14pt]{extarticle}
+
+\usepackage{cmap}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage[russian]{babel}
+
+\usepackage[a4paper,margin=1.5cm,footskip=1cm,left=2cm,right=1.5cm,top=1.5cm
+	,bottom=2.0cm]{geometry}
+\usepackage{textcase}
+\usepackage{csquotes}
+\usepackage{enumitem}
+
+\usepackage[labelsep=period,justification=centering]{caption}
+
+\usepackage{amsmath}
+\usepackage{pgfplots}
+
+\usepackage{float}
+
+\usepackage{indentfirst}
+
+\usepackage{textgreek}
+
+\setlist[description]{leftmargin=\parindent,labelindent=\parindent}
+
+\begin{document}
+
+\setcounter{secnumdepth}{0}
+
+\begin{titlepage}
+
+	\begin{center}
+		Новосибирский государственный технический университет
+		
+		Факультет прикладной математики и информатики
+		
+		Кафедра теоретической и прикладной информатики
+		
+		\vspace{250pt}
+		
+		\textbf{\LARGE{Лабораторная работа № 3}}
+		\medbreak
+		\large{<<Вычисление информационной матрицы для стохастических дискретных
+		моделей>>} \\
+		\medbreak
+		\small{по дисциплине \\
+		\medbreak
+		<<Математические методы планирования эксперимента>>}
+		\vspace{100pt}
+	\end{center}
+
+	\begin{flushleft}
+		\begin{tabbing}
+			Группа:\qquad\qquad \= ПММ-61\\
+			Студент:            \> Горбунов К. К.\\
+			Преподаватели:      \> доц. Черникова О. С.\\
+			                    \> доц. Филиппова Е. В.
+		\end{tabbing}
+	\end{flushleft}
+
+	\begin{center}
+		\vspace{\fill}
+		Новосибирск, 2017 г.
+	\end{center}
+
+\end{titlepage}
+
+\newpage
+
+\renewenvironment{knitrout}{\setlength{\topsep}{0mm}}{}
+
+\section{Цель работы}
+
+Ознакомиться с двойственной процедурой синтеза непрерывных планов эксперимента.
+
+\section{Задание к лабораторной работе}
+
+\begin{enumerate}
+	\item Написать программу, реализующую двойственную градиентную процедуру
+		планирования D-оптимальных входных сигнало сигналов для регрессионных
+		моделей.
+	\item Округлить полученные непрерывные планы эксперимента до дискретных
+		планов, в соответствии с алгоритмом, реализованным в лабораторной работе
+		№ 1.
+	\item Проверить правильность работы программ на моделях с различным числом
+		варьируемых параметров.
+\end{enumerate}
+
+Модель:
+
+\[
+	y = \theta_1 x_1 + \theta_2 x_2 + \theta_3 x_3
+\]
+
+
+\section{Ход работы}
+
+\subsection{Вспомогательные процедуры}
+
+<<options, echo=FALSE, cache=FALSE, purl=F>>=
+opts_chunk$set(purl=FALSE, cache=TRUE, autodep=TRUE, tidy=TRUE)
+dep_auto()
+options(digits=5, width=60, formatR.indent=4)
+@
+
+<<optplan-function, purl=T>>=
+optplan <- function(s) {
+	l <- list(c(-1,1))
+	l <- rep(l, s)
+	dfeg <- expand.grid(l)
+	q <- s2q(s)
+	p <- rep(1/q, q)
+	A <- data.matrix(dfeg)
+	A <- A[1:q,]
+	return(list(A=A, p=p, q=q))
+}
+@
+
+<<functions, purl=T>>=
+s2q <- function(s) s * (s + 1) / 2 + 1
+
+genInitData <- function(s)
+{
+	q <- s2q(s)
+
+	p <- rep(1/q, q)
+
+	th <- runif(s, min=-1, max=1)
+
+	repeat {
+		a <- runif(s*q, min=-1, max=1)
+
+		A <- matrix(a, nrow=q)
+
+		criterion <- X(c(A, p), th)
+		if (!is.na(criterion))
+				break
+	}
+
+	return(list(th=th, A=A, p=p, criterion=criterion))
+}
+
+# information matrix
+# TODO: add intercept
+M <- function(a, th)
+{
+	f <- th * a
+	rez <- f %*% t(f)
+	return(rez)
+}
+
+Mxi <- function(u, th)
+{
+	q <- length(u) / (length(th) + 1)
+
+	a <- head(u, n=-q)
+
+	p <- tail(u, n=q)
+
+	A <- matrix(a, nrow=q)
+
+	# list of matrices for every point of the plan
+	Mi <- plyr::alply(A, 1, M, th=th)
+
+	# multiply by weights 'p'
+	Mi <- Map('*', Mi, p)
+
+	# normalized information matrix
+	Mxi <- Reduce('+', Mi)
+
+	return(Mxi)
+}
+
+# u = c(A,p)
+X <- function(u, th)
+{
+	Mxi <- Mxi(u, th)
+
+	return(-log(det(Mxi)))
+}
+
+Sp <- function(x) sum(diag(x))
+
+mu <- function(a, Mxi, th)
+{
+	rez <- Sp(solve(Mxi) %*% M(a, th))
+	return(rez)
+}
+
+hina <- function(a)
+{
+	h <- 1 - a
+	h <- c(h, a + 1)
+	return(h)
+}
+
+Xtau <- function(tau, a, A, p, th)
+{
+	A <- rbind(A, a)
+
+	p <- p * (1 - tau)
+	p <- c(p, tau)
+
+	Xtau <- X(c(A, p), th)
+
+	return(Xtau)
+}
+@
+
+<<clean-plan, purl=T>>=
+clean <- function(l)
+{
+	dp <- 5e-2
+	dn <- 6e-1
+	A <- l$A
+	p <- l$p
+
+	# clean by weight
+	i <- which(p <= dp)
+	if (length(i) != 0) {
+		p[-i] <- p[-i] + sum(p[i]) / length(p[-i])
+		p <- p[-i]
+		A <- A[-i, , drop=FALSE]
+	}
+
+	# clean by distance
+	i <- 1
+	while (i <= nrow(A) - 1)
+	{
+		j <- i + 1
+		while (j <= nrow(A))
+		{
+			r <- A[i,] - A[j,]
+			n <- norm(as.matrix(r), 'F')
+			if (n <= dn)
+			{
+				# merge i and j points
+				px <- sum(p[c(i,j)])
+				x <- 1 / px * (p[i] * A[i,] + p[j] * A[j,])
+				A <- A[-c(i,j), , drop=FALSE]
+				A <- rbind(A, x)
+				p <- p[-c(i,j)]
+				p <- c(p, px)
+				i <- i - 1
+				if (i < 1) i <- 1
+				j <- j - 1
+				if (j < 1) j <- 1
+			}
+			j <- j + 1
+		}
+		i <- i + 1
+	}
+	return(list(A=A, p=p))
+}
+@
+
+<<dualproc, purl=TRUE>>=
+dualproc <- function(l)
+{
+	library(nloptr)
+
+	nlopts <- list(xtol_rel=1e-6, maxeval=1e3)
+
+	d <- 1e-10
+	th <- l$th
+	s <- length(th)
+	eta <- s
+
+	A <- l$A
+	p <- l$p
+
+	repeat {
+		# 1
+		Mxi <- Mxi(c(A, p), th)
+
+		repeat {
+			a <- runif(s, min=-1, max=1)
+
+			# 2
+			l <- slsqp(a, function(a, Mxi, th) -mu(a, Mxi, th), hin=hina, Mxi=Mxi,
+								 th=th, control=nlopts)
+			a <- l$par
+			mu <- -l$value
+
+			if (abs(mu - eta) <= d) {
+				criterion <- X(c(A, p), th)
+				return(list(A=A, p=p, criterion=criterion))
+			}
+
+			if (mu > eta)
+				break
+			# else go to 2
+		}
+
+		hint <- function(tau) c(tau - 1e-11, 1 - 1e-11 - tau)
+
+		# 3
+		repeat {
+			x0 <- runif(1)
+			if (!is.nan(Xtau(x0, a, A, p, th)))
+				break
+		}
+		tau <- slsqp(x0, fn=Xtau, hin=hint, a=a, A=A, p=p, th=th,
+								 control=nlopts)$par
+
+		# 4: add 'a' to plan
+		p <- p * (1 - tau)
+		p <- c(p, tau)
+
+		A <- rbind(A, a)
+
+		l <- clean(list(A=A, p=p))
+		A <- l$A
+		p <- l$p
+
+		# and continue
+	}
+	return(list(A=A, p=p))
+}
+@
+
+\subsection{Начальный план}
+
+<<initial-plan>>=
+s <- 3
+l0 <- genInitData(s)
+l0
+@
+
+\subsection{Нахождение оптимального плана}
+
+<<find-opt, warning=F>>=
+l <- dualproc(l0)
+l
+@
+
+\section*{Заключение}
+
+Заключение.
+
+\begin{thebibliography}{9}
+
+\begin{sloppypar}
+
+\bibitem{mono} Активная параметрическая идентификация стохастических линейных
+	систем: монография / В.И. Денисов, В.М. Чубич, О.С. Черникова, Д.И. Бобылева.
+		--- Новосибирск : Изд-во НГТУ, 2009. --- 192 с.
+		(Серия <<Монографии НГТУ>>).
+
+\end{sloppypar}
+
+\bibitem{knitr16} Yihui Xie (2016). knitr: A General-Purpose Package for
+	Dynamic Report Generation in R. R package version 1.15.1.
+
+\end{thebibliography}
+
+\end{document}
+
+# vim: ts=2 sw=2
