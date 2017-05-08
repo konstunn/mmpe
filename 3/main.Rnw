@@ -89,252 +89,153 @@
 		варьируемых параметров.
 \end{enumerate}
 
-Модель:
+Модель 1:
+
+\begin{equation}
+\label{eq:mod1}
+\left\{
+	\begin{array}{lll}
+		x(t_{k+1}) &= \theta_1 x(t_k) + \theta_2 u(t) + w(t), \\
+		y(t_{k+1}) &= x(t_{k+1}) + v(t_{k+1}),\ k = 0, 1.
+	\end{array}
+\right.
+\end{equation}
 
 \[
-	y = \theta_1 x_1 + \theta_2 x_2 + \theta_3 x_3
+	Q = 0.1, R = 0.3, \bar{x}(t_0) = 0, P_0 = 0.1, \\
+	u(t_0) = u(t_1) = 2, \theta_1 = 1, \theta_1 = 1
 \]
 
+<<>>=
+M <- c(8.35, 12.31, 12.31, 27.7)
+M <- matrix(M, nrow=2, ncol=2, byrow=TRUE)
+@
+
+Ответ:
+
+<<>>=
+M
+@
+
+Модель 2:
+
+\begin{equation}
+\label{eq:mod2}
+\left\{
+	\begin{array}{lll}
+		x(t_{k+1}) &= \theta_1 x(t_k) + \theta_2 u(t) + w(t), \\
+		y(t_{k+1}) &= x(t_{k+1}) + v(t_{k+1}),\ k = 0, 1.
+	\end{array}
+\right.
+\end{equation}
 
 \section{Ход работы}
 
 \subsection{Вспомогательные процедуры}
 
 <<options, echo=FALSE, cache=FALSE, purl=F>>=
-opts_chunk$set(purl=FALSE, cache=TRUE, autodep=TRUE, tidy=TRUE)
+opts_chunk$set(purl=TRUE, cache=TRUE, autodep=TRUE, tidy=TRUE)
 dep_auto()
 options(digits=5, width=60, formatR.indent=4)
 @
 
-<<optplan-function, purl=T>>=
-optplan <- function(s) {
-	l <- list(c(-1,1))
-	l <- rep(l, s)
-	dfeg <- expand.grid(l)
-	q <- s2q(s)
-	p <- rep(1/q, q)
-	A <- data.matrix(dfeg)
-	A <- A[1:q,]
-	return(list(A=A, p=p, q=q))
+<<model-matrices>>=
+Phi <- function(th) {}
+
+Psi <- function(th) {}
+
+H <- function(th) {}
+@
+
+<<<B>>=
+B <- function(Pp, th)
+{
+	H <- H(th)
+
+	B <- H %*% Pp %*% t(H) + R(th)
+	return(B)
 }
 @
 
-<<functions, purl=T>>=
-s2q <- function(s) s * (s + 1) / 2 + 1
-
-genInitData <- function(s)
+<<matderiv>>=
+matderiv(A, th) 
 {
-	q <- s2q(s)
+	dA <- jacobian(A, th)
 
-	p <- rep(1/q, q)
-
-	th <- runif(s, min=-1, max=1)
-
-	repeat {
-		a <- runif(s*q, min=-1, max=1)
-
-		A <- matrix(a, nrow=q)
-
-		criterion <- X(c(A, p), th)
-		if (!is.na(criterion))
-				break
-	}
-
-	return(list(th=th, A=A, p=p, criterion=criterion))
+	f <- function(a) matrix(a, nrow=nrow(A), ncol=ncol(A))
+	
+	dA <- apply(dA, 2, f)
 }
 
-# information matrix
-# TODO: add intercept
-M <- function(a, th)
-{
-	f <- th * a
-	rez <- f %*% t(f)
-	return(rez)
+<<K>>=
+K <- function(Pp, th) {
+	B <- B(Pp, th)
+	K <- Pp %*% t(H(th)) %*% solve(B)
 }
+ 
+K_ <- function(Pp, th)
+	Phi(th) %*% K(Pp, th)
 
-Mxi <- function(u, th)
+K_A <- function(K_, th)
 {
-	q <- length(u) / (length(th) + 1)
-
-	a <- head(u, n=-q)
-
-	p <- tail(u, n=q)
-
-	A <- matrix(a, nrow=q)
-
-	# list of matrices for every point of the plan
-	Mi <- plyr::alply(A, 1, M, th=th)
-
-	# multiply by weights 'p'
-	Mi <- Map('*', Mi, p)
-
-	# normalized information matrix
-	Mxi <- Reduce('+', Mi)
-
-	return(Mxi)
-}
-
-# u = c(A,p)
-X <- function(u, th)
-{
-	Mxi <- Mxi(u, th)
-
-	return(-log(det(Mxi)))
-}
-
-Sp <- function(x) sum(diag(x))
-
-mu <- function(a, Mxi, th)
-{
-	rez <- Sp(solve(Mxi) %*% M(a, th))
-	return(rez)
-}
-
-hina <- function(a)
-{
-	h <- 1 - a
-	h <- c(h, a + 1)
-	return(h)
-}
-
-Xtau <- function(tau, a, A, p, th)
-{
-	A <- rbind(A, a)
-
-	p <- p * (1 - tau)
-	p <- c(p, tau)
-
-	Xtau <- X(c(A, p), th)
-
-	return(Xtau)
+	dK_ <- matderiv(K_, th)
+	K_A <- Reduce(rbind, c(K_, dK_))
+	return(K_A)
 }
 @
 
-<<clean-plan, purl=T>>=
-clean <- function(l)
+<<PhiA>>=
+PhiA <- function(Pp, dPhi, dH , th)
 {
-	dp <- 5e-2
-	dn <- 6e-1
-	A <- l$A
-	p <- l$p
-
-	# clean by weight
-	i <- which(p <= dp)
-	if (length(i) != 0) {
-		p[-i] <- p[-i] + sum(p[i]) / length(p[-i])
-		p <- p[-i]
-		A <- A[-i, , drop=FALSE]
-	}
-
-	# clean by distance
-	i <- 1
-	while (i <= nrow(A) - 1)
-	{
-		j <- i + 1
-		while (j <= nrow(A))
-		{
-			r <- A[i,] - A[j,]
-			n <- norm(as.matrix(r), 'F')
-			if (n <= dn)
-			{
-				# merge i and j points
-				px <- sum(p[c(i,j)])
-				x <- 1 / px * (p[i] * A[i,] + p[j] * A[j,])
-				A <- A[-c(i,j), , drop=FALSE]
-				A <- rbind(A, x)
-				p <- p[-c(i,j)]
-				p <- c(p, px)
-				i <- i - 1
-				if (i < 1) i <- 1
-				j <- j - 1
-				if (j < 1) j <- 1
-			}
-			j <- j + 1
-		}
-		i <- i + 1
-	}
-	return(list(A=A, p=p))
-}
-@
-
-<<dualproc, purl=TRUE>>=
-dualproc <- function(l)
-{
-	library(nloptr)
-
-	nlopts <- list(xtol_rel=1e-6, maxeval=1e3)
-
-	d <- 1e-10
-	th <- l$th
 	s <- length(th)
-	eta <- s
+	K_ <- K_(Pp, th)
 
-	A <- l$A
-	p <- l$p
+	dPhi <- Reduce(rbind, dPhi)
+	dH <- Reduce(rbind, dH)
 
-	repeat {
-		# 1
-		Mxi <- Mxi(c(A, p), th)
+	1st_col <- dPhi - K_ %*% dH
+	1st_col <- c(Phi, 1st_col)
 
-		repeat {
-			a <- runif(s, min=-1, max=1)
-
-			# 2
-			l <- slsqp(a, function(a, Mxi, th) -mu(a, Mxi, th), hin=hina, Mxi=Mxi,
-								 th=th, control=nlopts)
-			a <- l$par
-			mu <- -l$value
-
-			if (abs(mu - eta) <= d) {
-				criterion <- X(c(A, p), th)
-				return(list(A=A, p=p, criterion=criterion))
-			}
-
-			if (mu > eta)
-				break
-			# else go to 2
-		}
-
-		hint <- function(tau) c(tau - 1e-11, 1 - 1e-11 - tau)
-
-		# 3
-		repeat {
-			x0 <- runif(1)
-			if (!is.nan(Xtau(x0, a, A, p, th)))
-				break
-		}
-		tau <- slsqp(x0, fn=Xtau, hin=hint, a=a, A=A, p=p, th=th,
-								 control=nlopts)$par
-
-		# 4: add 'a' to plan
-		p <- p * (1 - tau)
-		p <- c(p, tau)
-
-		A <- rbind(A, a)
-
-		l <- clean(list(A=A, p=p))
-		A <- l$A
-		p <- l$p
-
-		# and continue
-	}
-	return(list(A=A, p=p))
+	Phi_Kk_H <- Phi - K_ %*% H(th)
+	Phi_Kk_H <- replicate(s, Phi_Kk_H, simplify=F)
+	Matrix::bdiag(Phi_Kk_H)
 }
 @
 
-\subsection{Начальный план}
-
-<<initial-plan>>=
-s <- 3
-l0 <- genInitData(s)
-l0
+<<EA>>=
+predictEA(EA) {
+}
 @
 
-\subsection{Нахождение оптимального плана}
+<<M>>=
+# TODO: put all parameters in a list, take a single list as an argument
+M <- function(Phi, Psi, Gam, H, Q, R, Ex0, P0, th)
+{
+	# 1
+	# these are lists whose elements are matrices of derivatives by each theta_i
+	dPhi <- matderiv(Phi, th)
+	dPsi <- matderiv(Psi, th)
+	dGam <- matderiv(Gam, th)
+	dH <-	matderiv(H, th)
+	dQ <- matderiv(Q, th)
+	dR <- matderiv(R, th)
+	dEx0 <- matderiv(Ex0, th)
+	dP0 <- matderiv(P0, th)
 
-<<find-opt, warning=F>>=
-l <- dualproc(l0)
-l
+	PsiA <- Reduce(rbind, c(Psi, dPsi))
+
+	# 2
+	Mth <- 0
+	P00 <- P0
+	dP00 <- dP0
+	t <- 0
+
+	# 3
+	if (k)
+	#	:
+	else
+		EA <- 0
+}
 @
 
 \section*{Заключение}
