@@ -106,14 +106,14 @@
 	u(t_0) = u(t_1) = 2, \theta_1 = 1, \theta_1 = 1
 \]
 
-<<>>=
+<<MM>>=
 M <- c(8.35, 12.31, 12.31, 27.7)
 M <- matrix(M, nrow=2, ncol=2, byrow=TRUE)
 @
 
 Ответ:
 
-<<>>=
+<<M>>=
 M
 @
 
@@ -139,7 +139,7 @@ dep_auto()
 options(digits=5, width=60, formatR.indent=4)
 @
 
-<<model-matrices>>=
+<<model>>=
 Phi <- function(th) {}
 
 Psi <- function(th) {}
@@ -147,94 +147,155 @@ Psi <- function(th) {}
 H <- function(th) {}
 @
 
-<<<B>>=
-B <- function(Pp, th)
-{
-	H <- H(th)
-
-	B <- H %*% Pp %*% t(H) + R(th)
-	return(B)
-}
-@
-
 <<matderiv>>=
-matderiv(A, th) 
+library(numDeriv)
+# returns list of partial derivatives of matrices by theta_i
+# A - matrix-function
+matderiv <- function(A, th)
 {
 	dA <- jacobian(A, th)
 
 	f <- function(a) matrix(a, nrow=nrow(A), ncol=ncol(A))
 	
 	dA <- apply(dA, 2, f)
+	dA <- Reduce(rbind, dA)
+	return(dA)
 }
 
-<<K>>=
-K <- function(Pp, th) {
-	B <- B(Pp, th)
-	K <- Pp %*% t(H(th)) %*% solve(B)
-}
- 
-K_ <- function(Pp, th)
-	Phi(th) %*% K(Pp, th)
-
-K_A <- function(K_, th)
+<<dK_>>=
+K_ <- function(P, th)
 {
-	dK_ <- matderiv(K_, th)
-	K_A <- Reduce(rbind, c(K_, dK_))
-	return(K_A)
+	H <- H(th)
+	Phi(th) %*% P %*% t(H) %*% solve(H %*% P %*% t(H) + R(th))
 }
 @
 
 <<PhiA>>=
-PhiA <- function(Pp, dPhi, dH , th)
+PhiA <- function(Phi, K_, dPhi, H, dH)
 {
-	s <- length(th)
-	K_ <- K_(Pp, th)
+	s <- ncol(Phi)
 
-	dPhi <- Reduce(rbind, dPhi)
-	dH <- Reduce(rbind, dH)
+	first_col <- dPhi - K_ %*% dH
+	first_col <- c(Phi, first_col)
 
-	1st_col <- dPhi - K_ %*% dH
-	1st_col <- c(Phi, 1st_col)
+	diag <- Phi - K_ %*% H
+	diag <- replicate(s, diag, simplify=F)
+	diag <- Matrix::bdiag(diag)
 
-	Phi_Kk_H <- Phi - K_ %*% H(th)
-	Phi_Kk_H <- replicate(s, Phi_Kk_H, simplify=F)
-	Matrix::bdiag(Phi_Kk_H)
+	PhiA <- rbind(rep(0, ncol(diag)), diag)
+	PhiA <- cbind(first_col, PhiA)
+
+	return(PhiA)
 }
 @
 
-<<EA>>=
-predictEA(EA) {
-}
-@
-
-<<M>>=
+<<Mf>>=
 # TODO: put all parameters in a list, take a single list as an argument
-M <- function(Phi, Psi, Gam, H, Q, R, Ex0, P0, th)
+# input arguments are all functions, except for 'th' and 'u'
+M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 {
 	# 1
-	# these are lists whose elements are matrices of derivatives by each theta_i
+	# these are lists whose elements are derivatives of matrices by each theta_i
 	dPhi <- matderiv(Phi, th)
 	dPsi <- matderiv(Psi, th)
 	dGam <- matderiv(Gam, th)
 	dH <-	matderiv(H, th)
 	dQ <- matderiv(Q, th)
 	dR <- matderiv(R, th)
-	dEx0 <- matderiv(Ex0, th)
+	dX_0 <- matderiv(X_0, th)
 	dP0 <- matderiv(P0, th)
 
-	PsiA <- Reduce(rbind, c(Psi, dPsi))
+	# now these are numeric matrices
+	Phi <- Phi(th)
+	Psi <- Psi(th)
+	Gam <- Gam(th)
+	H <- H(th)
+	Q <- Q(th)
+	R <- R(th)
+	X_0 <- X_0(th)
+	P_0 <- P_0(th)
 
+	PsiA <- rbind(Psi, dPsi)
+
+	# TODO: come back here soon to complete
 	# 2
 	Mth <- 0
-	P00 <- P0
-	dP00 <- dP0
-	t <- 0
+	P <- P0
+	dP <- dP0
+	k <- 0
 
 	# 3
-	if (k)
-	#	:
+	K_ <- K_(P, th)
+	dK_ <- matderiv(K_, th)
+
+	K_A <- rbind(K_, dK_)
+
+	PhiA <- PhiA(Phi, K_, dPhi, H, dH)
+
+	B <- P %*% P %*% t(H) + R
+
+	if (k > 0)
+		EAp <- PhiA %*% EA %*% t(PhiA) + K_A %*% B %*% t(K_A)
 	else
-		EA <- 0
+		EAp <- 0
+
+	# 4
+	n <- nrow(X_0)
+
+	factors <- c(sapply(1:s, function(a) rep(a, n)))
+
+	dX_0 <- split(dX_0, factors)
+
+	Phi_dX_0 <- Map('%*%', Phi, dX_0)
+
+	Reduce(rbind, Phi_dX_0)
+
+	if (k > 0)
+		X_Ap <- PhiA %*% X_Ap + PsiA %*% u[k+1]
+	else
+		X_Ap <- 
+			rbind(Phi, dPhi) %*% X_0 + 
+			rbind(rep(0, n), Phi_dX_0) + 
+			PsiA %*% u[k+1]
+
+	dX_0 <- Reduce(rbind, dX_0)
+
+	# 5
+	Pp <- Phi %*% P %*% t(Phi) + Gam %*% Q %*% t(Gam)
+	Bp <- H %*% Pp %*% t(H) + R
+	Kp <- Pp %*% t(H) %*% solve(Bp)
+	n <- nrow(Phi)
+	I <- diag(n)
+	Pu <- (I - Kp %*% H) %*% Pp
+	K_ <- Phi %*% Kp
+
+	# 6
+	# PhiA(t+2, t+1)
+	PhiA <- PhiA(K_, Phi, dPhi, H, dH, th)
+
+	# 7
+	# dP, dB, dK, dP, dK_
+	#dPp <- pred_dP()
+	#dB
+	#dK
+	#dPu
+	#dK_
+
+	# 8
+	# K_A <- K_A(K_, th)
+
+	# 9
+	# AM
+
+	# 10
+	#M <- M + AM
+
+	# 11
+	# if (t <= N-1)
+	# TODO: make loop
+	#		continue
+	# else
+	#		return(M)
 }
 @
 
