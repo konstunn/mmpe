@@ -219,7 +219,7 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 	X_0 <- X_0(th)
 	P_0 <- P_0(th)
 
-	PsiA <- rbind(Psi, dPsi)
+	PsiA <- rbind(Reduce(rbind, Psi), dPsi)
 
 	# TODO: come back here soon to complete
 	# 2
@@ -232,9 +232,9 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 	K_ <- K_(P, th)
 	dK_ <- matderiv(K_, th)
 
-	K_A <- rbind(K_, dK_)
+	K_A <- rbind(K_, Reduce(rbind, dK_))
 
-	PhiA <- PhiA(Phi, K_, dPhi, H, dH)
+	PhiA <- PhiA(Phi, K_, Reduce(rbind, dPhi), H, dH)
 
 	B <- P %*% P %*% t(H) + R
 
@@ -244,12 +244,6 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		EAp <- 0
 
 	# 4
-	n <- nrow(X_0)
-
-	factors <- c(sapply(1:s, function(a) rep(a, n)))
-
-	dX_0 <- split(dX_0, factors)
-
 	Phi_dX_0 <- Map('%*%', Phi, dX_0)
 
 	Reduce(rbind, Phi_dX_0)
@@ -258,11 +252,9 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		X_Ap <- PhiA %*% X_Ap + PsiA %*% u[k+1]
 	else
 		X_Ap <- 
-			rbind(Phi, dPhi) %*% X_0 + 
-			rbind(rep(0, n), Phi_dX_0) + 
-			PsiA %*% u[k+1]
-
-	dX_0 <- Reduce(rbind, dX_0)
+			rbind(Phi, Reduce(rbind, dPhi)) %*% X_0
+		+ rbind(rep(0, n), Phi_dX_0)
+		+ PsiA %*% u[k+1]
 
 	# 5
 	Pp <- Phi %*% P %*% t(Phi) + Gam %*% Q %*% t(Gam)
@@ -274,8 +266,7 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 	K_ <- Phi %*% Kp
 
 	# 6
-	# PhiA(t+2, t+1)
-	PhiA <- PhiA(K_, Phi, dPhi, H, dH, th)
+	PhiA <- PhiA(K_, Phi, Reduce(rbind, dPhi), H, Reduce(rbind, dH))
 
 	# 7
 	# dP, dB, dK, dP, dK_
