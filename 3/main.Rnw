@@ -155,10 +155,14 @@ matderiv <- function(A, th)
 {
 	dA <- jacobian(A, th)
 
-	f <- function(a) matrix(a, nrow=nrow(A), ncol=ncol(A))
-	
+	A <- A(th)
+
+	f <- function(a) list(matrix(a, nrow=nrow(A), ncol=ncol(A)))
+
 	dA <- apply(dA, 2, f)
-	dA <- Reduce(rbind, dA)
+
+	dA <- Reduce(c, dA)
+
 	return(dA)
 }
 
