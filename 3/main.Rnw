@@ -224,27 +224,27 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 	# TODO: come back here soon to complete
 	# 2
 	Mth <- 0
-	P <- P0
-	dP <- dP0
+	Pe <- P0
+	dPe <- dP0
 	k <- 0
 
 	# 3
-	K_ <- K_(P, th)
-	dK_ <- matderiv(K_, th)
+	dK_e <- matderiv(function(th) K_(Pe, th), th)
+	K_e <- K_(Pe, th)
 
-	K_A <- rbind(K_, Reduce(rbind, dK_))
+	K_Ae <- rbind(K_e, Reduce(rbind, dK_e))
 
-	PhiA <- PhiA(Phi, K_, Reduce(rbind, dPhi), H, dH)
+	PhiA <- PhiA(Phi, K_e, Reduce(rbind, dPhi), H, dH)
 
-	B <- P %*% P %*% t(H) + R
+	Be <- Pe %*% Pe %*% t(H) + R
 
 	if (k > 0)
-		EAp <- PhiA %*% EA %*% t(PhiA) + K_A %*% B %*% t(K_A)
+		EAp <- PhiA %*% EAp %*% t(PhiA) + K_Ae %*% Be %*% t(K_Ae)
 	else
 		EAp <- 0
 
 	# 4
-	Phi_dX_0 <- Map('%*%', Phi, dX_0)
+	Phi_dX_0 <- lapply(dX_0, function(dX_0) Phi %*% dX_0)
 
 	Reduce(rbind, Phi_dX_0)
 
@@ -257,30 +257,80 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		+ PsiA %*% u[k+1]
 
 	# 5
-	Pp <- Phi %*% P %*% t(Phi) + Gam %*% Q %*% t(Gam)
+	Pp <- Phi %*% Pe %*% t(Phi) + Gam %*% Q %*% t(Gam)
 	Bp <- H %*% Pp %*% t(H) + R
 	Kp <- Pp %*% t(H) %*% solve(Bp)
 	n <- nrow(Phi)
 	I <- diag(n)
 	Pu <- (I - Kp %*% H) %*% Pp
-	K_ <- Phi %*% Kp
+	K_p <- Phi %*% Kp
 
 	# 6
-	PhiA <- PhiA(K_, Phi, Reduce(rbind, dPhi), H, Reduce(rbind, dH))
+	PhiA <- PhiA(K_p, Phi, Reduce(rbind, dPhi), H, Reduce(rbind, dH))
 
 	# 7
-	# dP, dB, dK, dP, dK_
-	#dPp <- pred_dP()
-	#dB
-	#dK
-	#dPu
-	#dK_
+	# dPp
+	dPhi_Pe_tPhi <- lapply(dPhi, function(dPhi_i) dPhi_i %*% Pe %*% t(Phi))
+	Phi_dPe_tPhi <- lapply(dPe, function(dPe_i) Phi %*% dPe_i %*% t(Phi))
+	Phi_Pe_tdPhi <- lapply(dPhi, function(dPhi_i) Phi %*% Pe %*% t(dPhi_i))
+
+	dPp <- Map('+', dPhi_Pe_tPhi, Phi_dPe_tPhi)
+	dPp <- Map('+', dPp, Phi_Pe_tdPhi)
+
+	dGam_Pe_tGam <- lapply(dGam, function(dGam_i) dGam_i %*% Pe %*% t(Gam))
+	Gam_dPe_tGam <- lapply(dPe, function(dPe_i) Gam %*% dPe_i %*% t(Gam))
+	Gam_Pe_tdGam <- lapply(dGam, function(dGam_i) Gam %*% Pe %*% t(dGam_i))
+
+	dPp <- Map('+', dPp, dGam_Pe_tGam)
+	dPp <- Map('+', dPp, Gam_dPe_tGam)
+	dPp <- Map('+', dPp, Gam_Pe_tdGam)
+
+	# dBp
+	dH_Pp_tH <- lapply(dH, function(dH_i) dH_i %*% Pp %*% t(H))
+	H_dPp_tH <- lapply(dPp, function(dPp_i) H %*% dPp_i %*% t(H))
+	H_Pp_tdH <- lapply(dH, function(dH_i) H %*% Pp %*% t(dH_i))
+
+	dBp <- Map('+', dH_Pp_tH, H_dPp_tH)
+	dBp <- Map('+', dBp, H_Pp_tdH)
+
+	dBp <- Map('+', dBp, dR)
+
+	# dKp
+	dPp_tH <- lapply(dPp, function(dPp_i) dPp_i %*% t(H))
+	Pp_tdH <- lapply(dH, function(dH_i) Pp %*% t(dH)
+
+	invBp <- solve(Bp)
+	Pp_tH_invBp_dBp_i <- function(dBp_i) Pp %*% t(H) %*% invBp %*% dBp_i
+	Pp_tH_invBp_dBp <- lapply(dBp, Pp_tH_invBp_dBp_i)
+
+	dKp <- Map('+', dPp_tH, Pp_tdH)
+	dKp <- Map('-', dKp, Pp_tH_invBp_dBp)
+	dKp <- lapply(dKp, function(dKp_i) dKp_i %*% invBp)
+
+	# dPu
+	I_Kp_H <- I - Kp %*% H
+	I_Kp_H_dPp <- lapply(dPp, function(dPp_i) I_Kp_H %*% dPp_i)
+
+	dKp_H <- lapply(dKp, function(dKp_i) dKp_i %*% H)
+	Kp_dH <- lapply(dH, function(dH_i) Kp %*% dH_i)
+
+	dKp_H_Kp_dH <- Map('+', dKp_H, Kp_dH)
+
+	dKp_H_Kp_dH_Pp <- lapply(dKp_H_Kp_dH, function(a_i) a_i %*% Pp)
+
+	dPu <- Map('-', I_Kp_H_dPp, dKp_H_Kp_dH_Pp)
+
+	# dK_p
+	dPhi_Kp <- lapply(dPhi, function(dPhi_i) dPhi_i %*% Kp)
+	Phi_dKp <- lapply(dKp, function(dKp_i) Phi %*% dKp_i)
+	dK_p <- Map('+', dPhi_Kp, Phi_dKp)
 
 	# 8
-	# K_A <- K_A(K_, th)
+	K_Ap <- Reduce(rbind, dKp)
+	K_Ap <- rbind(K_p, K_Ap)
 
 	# 9
-	# AM
+	#AM <- 
 
 	# 10
 	#M <- M + AM
