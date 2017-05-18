@@ -1,5 +1,5 @@
 
-R_OPTS=--vanilla
+R_OPTS=--vanilla -q
 
 .PHONY: main.tex
 
