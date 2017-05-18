@@ -106,7 +106,7 @@
 	u(t_0) = u(t_1) = 2, \theta_1 = 1, \theta_1 = 1
 \]
 
-<<MM>>=
+<<MM, echo=F>>=
 M <- c(8.35, 12.31, 12.31, 27.7)
 M <- matrix(M, nrow=2, ncol=2, byrow=TRUE)
 @
@@ -136,7 +136,7 @@ M
 <<options, echo=FALSE, cache=FALSE, purl=F>>=
 opts_chunk$set(purl=TRUE, cache=TRUE, autodep=TRUE, tidy=TRUE)
 dep_auto()
-options(digits=5, width=60, formatR.indent=4)
+options(digits=5, width=55, formatR.indent=2)
 @
 
 <<model>>=
@@ -238,8 +238,9 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 	Mth <- 0
 	Pe <- P0
 	dPe <- dP0
+	N <- length(u)
 
-	for (k in 0:N-1)
+	for (k in 0:(N-1))
 	{
 		# 3
 		dK_e <- matderiv(function(th) K_(Pe, th), th)
@@ -251,23 +252,25 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 
 		Be <- Pe %*% Pe %*% t(H) + R
 
-		if (k > 0)
+		if (k > 0) {
 			EAp <- PhiA %*% EAp %*% t(PhiA) + K_Ae %*% Be %*% t(K_Ae)
-		else
+		} else {
 			EAp <- 0
+		}
 
 		# 4
 		Phi_dX_0 <- lapply(dX_0, function(dX_0) Phi %*% dX_0)
 
 		Reduce(rbind, Phi_dX_0)
 
-		if (k > 0)
+		if (k > 0) {
 			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[k+1]
-		else
+		} else {
 			X_Ap <-
 				rbind(Phi, Reduce(rbind, dPhi)) %*% X_0
 			+ rbind(rep(0, n), Phi_dX_0)
 			+ PsiA %*% u[k+1]
+		}
 
 		# 5
 		Pp <- Phi %*% Pe %*% t(Phi) + Gam %*% Q %*% t(Gam)
