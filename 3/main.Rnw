@@ -270,7 +270,7 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 
 		PhiA <- PhiA(Phi, K_e, dPhi, H, dH)
 
-		Be <- Pe %*% Pe %*% t(H) + R
+		Be <- H %*% Pe %*% t(H) + R
 
 		if (k > 0) {
 			EAp <- PhiA %*% EAp %*% t(PhiA) + K_Ae %*% Be %*% t(K_Ae)
@@ -399,11 +399,10 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 				AM[i,j] <- I + II + III + IV + V
 			}
 		}
-		Pe <- Pu
-
 		# 10
 		Mth <- Mth + AM
 
+		Pe <- Pu
 	}
 
 	return(Mth)
