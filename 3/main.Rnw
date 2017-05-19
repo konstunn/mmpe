@@ -139,12 +139,25 @@ dep_auto()
 options(digits=5, width=55, formatR.indent=2)
 @
 
-<<model>>=
-Phi <- function(th) {}
+<<model, purl=T>>=
+Phi <- function(th) matrix(th[1])
 
-Psi <- function(th) {}
+Psi <- function(th) matrix(th[2])
 
-H <- function(th) {}
+Gam <- function(th) matrix(1)
+
+Q <- function(th) matrix(0.1)
+
+H <- function(th) matrix(1)
+
+R <- function(th) matrix(0.3)
+
+X_0 <- function(th) matrix(0)
+
+P0 <- function(th) matrix(0.1)
+
+th <- c(1,1)
+u <- c(2,2)
 @
 
 <<matderiv>>=
@@ -155,7 +168,7 @@ matderiv <- function(A, th)
 {
 	dA <- jacobian(A, th)
 
-	A <- A(th)
+	A <- as.matrix(A(th))
 
 	f <- function(a) list(matrix(a, nrow=nrow(A), ncol=ncol(A)))
 
@@ -175,16 +188,23 @@ K_ <- function(P, th)
 @
 
 <<PhiA>>=
+library(Matrix)
 PhiA <- function(Phi, K_, dPhi, H, dH)
 {
-	s <- ncol(Phi)
+	s <- length(dH)
 
-	first_col <- dPhi - K_ %*% dH
-	first_col <- c(Phi, first_col)
+	first_col <- lapply(dH, function(dH_i) K_ %*% dH_i)
+	first_col <- Map('-', dPhi, first_col)
+
+	first_col <- Reduce(rbind, first_col)
+
+	first_col <- rbind(Phi, first_col)
 
 	diag <- Phi - K_ %*% H
 	diag <- replicate(s, diag, simplify=F)
-	diag <- Matrix::bdiag(diag)
+	diag <- bdiag(diag)
+
+
 
 	PhiA <- rbind(rep(0, ncol(diag)), diag)
 	PhiA <- cbind(first_col, PhiA)
@@ -229,9 +249,9 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 	Q <- Q(th)
 	R <- R(th)
 	X_0 <- X_0(th)
-	P_0 <- P_0(th)
+	P0 <- P0(th)
 
-	PsiA <- rbind(Reduce(rbind, Psi), dPsi)
+	PsiA <- rbind(Psi, Reduce(rbind, dPsi))
 
 	# TODO: come back here soon to complete
 	# 2
@@ -248,14 +268,14 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 
 		K_Ae <- rbind(K_e, Reduce(rbind, dK_e))
 
-		PhiA <- PhiA(Phi, K_e, Reduce(rbind, dPhi), H, dH)
+		PhiA <- PhiA(Phi, K_e, dPhi, H, dH)
 
 		Be <- Pe %*% Pe %*% t(H) + R
 
 		if (k > 0) {
 			EAp <- PhiA %*% EAp %*% t(PhiA) + K_Ae %*% Be %*% t(K_Ae)
 		} else {
-			EAp <- 0
+			EAp <- matrix(0, nrow=3, ncol=3)
 		}
 
 		# 4
@@ -266,10 +286,11 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		if (k > 0) {
 			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[k+1]
 		} else {
+			n <- nrow(Phi)
 			X_Ap <-
-				rbind(Phi, Reduce(rbind, dPhi)) %*% X_0
-			+ rbind(rep(0, n), Phi_dX_0)
-			+ PsiA %*% u[k+1]
+				rbind(Phi, Reduce(rbind, dPhi)) %*% X_0 +
+				rbind(rep(0, n), Reduce(rbind, Phi_dX_0)) +
+				PsiA %*% u[k+1]
 		}
 
 		# 5
@@ -282,7 +303,7 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		K_p <- Phi %*% Kp
 
 		# 6
-		PhiA <- PhiA(K_p, Phi, Reduce(rbind, dPhi), H, Reduce(rbind, dH))
+		PhiA <- PhiA(Phi, K_p, dPhi, H, dH)
 
 		# 7
 		# dPp
@@ -313,7 +334,7 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 
 		# dKp
 		dPp_tH <- lapply(dPp, function(dPp_i) dPp_i %*% t(H))
-		Pp_tdH <- lapply(dH, function(dH_i) Pp %*% t(dH))
+		Pp_tdH <- lapply(dH, function(dH_i) Pp %*% t(dH_i))
 
 		invBp <- solve(Bp)
 		Pp_tH_invBp_dBp_i <- function(dBp_i) Pp %*% t(H) %*% invBp %*% dBp_i
@@ -370,7 +391,7 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 				III <- Sp(C(i,n,s) %*% EAp__X_Ap__tX_Ap %*% tC0 %*% dH[[j]] %*%
 									invBp %*% H)
 
-				IV <- Sp(C(i,n,s) %*% EAp__X_Ap__tX_Ap %*% C(j,n,s) %*% t(H) %*%
+				IV <- Sp(C(i,n,s) %*% EAp__X_Ap__tX_Ap %*% t(C(j,n,s)) %*% t(H) %*%
 								 invBp %*% H)
 
 				V <- 0.5 * Sp(dBp[[i]] %*% invBp %*% dBp[[j]] %*% invBp)
@@ -378,6 +399,7 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 				AM[i,j] <- I + II + III + IV + V
 			}
 		}
+		Pe <- Pu
 
 		# 10
 		Mth <- Mth + AM
