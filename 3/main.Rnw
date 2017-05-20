@@ -263,29 +263,26 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 	for (k in 0:(N-1))
 	{
 		# 3
-		dK_e <- matderiv(function(th) K_(Pe, th), th)
-		K_e <- K_(Pe, th)
-
-		K_Ae <- rbind(K_e, Reduce(rbind, dK_e))
-
-		PhiA <- PhiA(Phi, K_e, dPhi, H, dH)
-
-		Be <- H %*% Pe %*% t(H) + R
-
 		if (k > 0) {
-			EAp <- PhiA %*% EAp %*% t(PhiA) + K_Ae %*% Be %*% t(K_Ae)
+			dK_p <- matderiv(function(th) K_(Pp, th), th)
+			K_p <- K_(Pp, th)
+
+			K_Ap <- rbind(K_p, Reduce(rbind, dK_p))
+
+			PhiA <- PhiA(Phi, K_p, dPhi, H, dH)
+
+			Bp <- H %*% Pp %*% t(H) + R
+
+			EAp <- PhiA %*% EAp %*% t(PhiA) + K_Ap %*% Bp %*% t(K_Ap)
 		} else {
 			EAp <- matrix(0, nrow=3, ncol=3)
 		}
 
 		# 4
-		Phi_dX_0 <- lapply(dX_0, function(dX_0) Phi %*% dX_0)
-
-		Reduce(rbind, Phi_dX_0)
-
 		if (k > 0) {
 			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[k+1]
 		} else {
+			Phi_dX_0 <- lapply(dX_0, function(dX_0) Phi %*% dX_0)
 			n <- nrow(Phi)
 			X_Ap <-
 				rbind(Phi, Reduce(rbind, dPhi)) %*% X_0 +
@@ -314,13 +311,13 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		dPp <- Map('+', dPhi_Pe_tPhi, Phi_dPe_tPhi)
 		dPp <- Map('+', dPp, Phi_Pe_tdPhi)
 
-		dGam_Pe_tGam <- lapply(dGam, function(dGam_i) dGam_i %*% Pe %*% t(Gam))
-		Gam_dPe_tGam <- lapply(dPe, function(dPe_i) Gam %*% dPe_i %*% t(Gam))
-		Gam_Pe_tdGam <- lapply(dGam, function(dGam_i) Gam %*% Pe %*% t(dGam_i))
+		dGam_Q_tGam <- lapply(dGam, function(dGam_i) dGam_i %*% Q %*% t(Gam))
+		Gam_dQ_tGam <- lapply(dQ, function(dQ_i) Gam %*% dQ_i %*% t(Gam))
+		Gam_Q_tdGam <- lapply(dGam, function(dGam_i) Gam %*% Q %*% t(dGam_i))
 
-		dPp <- Map('+', dPp, dGam_Pe_tGam)
-		dPp <- Map('+', dPp, Gam_dPe_tGam)
-		dPp <- Map('+', dPp, Gam_Pe_tdGam)
+		dPp <- Map('+', dPp, dGam_Q_tGam)
+		dPp <- Map('+', dPp, Gam_dQ_tGam)
+		dPp <- Map('+', dPp, Gam_Q_tdGam)
 
 		# dBp
 		dH_Pp_tH <- lapply(dH, function(dH_i) dH_i %*% Pp %*% t(H))
@@ -337,6 +334,7 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		Pp_tdH <- lapply(dH, function(dH_i) Pp %*% t(dH_i))
 
 		invBp <- solve(Bp)
+
 		Pp_tH_invBp_dBp_i <- function(dBp_i) Pp %*% t(H) %*% invBp %*% dBp_i
 		Pp_tH_invBp_dBp <- lapply(dBp, Pp_tH_invBp_dBp_i)
 
@@ -363,7 +361,7 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		dK_p <- Map('+', dPhi_Kp, Phi_dKp)
 
 		# 8
-		K_Ap <- Reduce(rbind, dKp)
+		K_Ap <- Reduce(rbind, dK_p)
 		K_Ap <- rbind(K_p, K_Ap)
 
 		# 9
