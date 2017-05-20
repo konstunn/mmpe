@@ -264,13 +264,6 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 	{
 		# 3
 		if (k > 0) {
-			dK_p <- matderiv(function(th) K_(Pp, th), th)
-			K_p <- K_(Pp, th)
-
-			K_Ap <- rbind(K_p, Reduce(rbind, dK_p))
-
-			PhiA <- PhiA(Phi, K_p, dPhi, H, dH)
-
 			Bp <- H %*% Pp %*% t(H) + R
 
 			EAp <- PhiA %*% EAp %*% t(PhiA) + K_Ap %*% Bp %*% t(K_Ap)
