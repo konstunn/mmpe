@@ -368,8 +368,6 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		C0 <- C(0,n,s)
 		tC0 <- t(C0)
 
-		invBp <- solve(Bp)
-
 		for (i in 1:s) {
 			for (j in 1:s) {
 
@@ -394,6 +392,7 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		Mth <- Mth + AM
 
 		Pe <- Pu
+		dPe <- dPu
 	}
 
 	return(Mth)
