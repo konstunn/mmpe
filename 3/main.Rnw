@@ -74,90 +74,21 @@
 
 \section{Цель работы}
 
-Ознакомиться с двойственной процедурой синтеза непрерывных планов эксперимента.
 
 \section{Задание к лабораторной работе}
 
 \begin{enumerate}
-	\item Написать программу, реализующую двойственную градиентную процедуру
-		планирования D-оптимальных входных сигнало сигналов для регрессионных
-		моделей.
-	\item Округлить полученные непрерывные планы эксперимента до дискретных
-		планов, в соответствии с алгоритмом, реализованным в лабораторной работе
-		№ 1.
-	\item Проверить правильность работы программ на моделях с различным числом
-		варьируемых параметров.
+	\item Написать программу, реализующую
 \end{enumerate}
-
-Модель 1:
-
-\begin{equation}
-\label{eq:mod1}
-\left\{
-	\begin{array}{lll}
-		x(t_{k+1}) &= \theta_1 x(t_k) + \theta_2 u(t) + w(t), \\
-		y(t_{k+1}) &= x(t_{k+1}) + v(t_{k+1}),\ k = 0, 1.
-	\end{array}
-\right.
-\end{equation}
-
-\[
-	Q = 0.1, R = 0.3, \bar{x}(t_0) = 0, P_0 = 0.1, \\
-	u(t_0) = u(t_1) = 2, \theta_1 = 1, \theta_1 = 1
-\]
-
-<<MM, echo=F>>=
-M <- c(8.35, 12.31, 12.31, 27.7)
-M <- matrix(M, nrow=2, ncol=2, byrow=TRUE)
-@
-
-Ответ:
-
-<<M>>=
-M
-@
-
-Модель 2:
-
-\begin{equation}
-\label{eq:mod2}
-\left\{
-	\begin{array}{lll}
-		x(t_{k+1}) &= \theta_1 x(t_k) + \theta_2 u(t) + w(t), \\
-		y(t_{k+1}) &= x(t_{k+1}) + v(t_{k+1}),\ k = 0, 1.
-	\end{array}
-\right.
-\end{equation}
 
 \section{Ход работы}
 
 \subsection{Вспомогательные процедуры}
 
 <<options, echo=FALSE, cache=FALSE, purl=F>>=
-opts_chunk$set(purl=TRUE, cache=TRUE, autodep=TRUE, tidy=TRUE)
+opts_chunk$set(purl=TRUE, cache=TRUE, autodep=TRUE, tidy=T)
 dep_auto()
 options(digits=5, width=55, formatR.indent=2)
-@
-
-<<model, purl=T>>=
-Phi <- function(th) matrix(th[1])
-
-Psi <- function(th) matrix(th[2])
-
-Gam <- function(th) matrix(1)
-
-Q <- function(th) matrix(0.1)
-
-H <- function(th) matrix(1)
-
-R <- function(th) matrix(0.3)
-
-X_0 <- function(th) matrix(0)
-
-P0 <- function(th) matrix(0.1)
-
-th <- c(1,1)
-u <- c(2,2)
 @
 
 <<matderiv>>=
@@ -179,14 +110,6 @@ matderiv <- function(A, th)
 	return(dA)
 }
 
-<<dK_>>=
-K_ <- function(P, th)
-{
-	H <- H(th)
-	Phi(th) %*% P %*% t(H) %*% solve(H %*% P %*% t(H) + R(th))
-}
-@
-
 <<PhiA>>=
 library(Matrix)
 PhiA <- function(Phi, K_, dPhi, H, dH)
@@ -203,8 +126,6 @@ PhiA <- function(Phi, K_, dPhi, H, dH)
 	diag <- Phi - K_ %*% H
 	diag <- replicate(s, diag, simplify=F)
 	diag <- bdiag(diag)
-
-
 
 	PhiA <- rbind(rep(0, ncol(diag)), diag)
 	PhiA <- cbind(first_col, PhiA)
@@ -253,7 +174,6 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 
 	PsiA <- rbind(Psi, Reduce(rbind, dPsi))
 
-	# TODO: come back here soon to complete
 	# 2
 	Mth <- 0
 	Pe <- P0
@@ -369,8 +289,8 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		tC0 <- t(C0)
 
 		for (i in 1:s) {
-			for (j in 1:s) {
-
+			for (j in 1:s)
+			{
 				I <- Sp(C0 %*% EAp__X_Ap__tX_Ap %*% tC0 %*% t(dH[[j]]) %*% invBp %*%
 								dH[[i]])
 
@@ -397,6 +317,59 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 
 	return(Mth)
 }
+@
+
+Тестовая модель 1:
+
+\begin{equation}
+\label{eq:mod1}
+\left\{
+	\begin{array}{lll}
+		x(t_{k+1}) &= \theta_1 x(t_k) + \theta_2 u(t) + w(t), \\
+		y(t_{k+1}) &= x(t_{k+1}) + v(t_{k+1}),\ k = 0, 1.
+	\end{array}
+\right.
+\end{equation}
+
+\[
+	Q = 0.1, R = 0.3, \bar{x}(t_0) = 0, P_0 = 0.1, \\
+	u(t_0) = u(t_1) = 2, \theta_1 = 1, \theta_1 = 1
+\]
+
+<<MM, echo=F>>=
+Mm <- c(8.35, 12.31, 12.31, 27.7)
+Mm <- matrix(Mm, nrow=2, ncol=2, byrow=TRUE)
+@
+
+Ответ:
+
+<<M>>=
+Mm
+@
+
+<<model, purl=T>>=
+Phi <- function(th) matrix(th[1])
+
+Psi <- function(th) matrix(th[2])
+
+Gam <- function(th) matrix(1)
+
+Q <- function(th) matrix(0.1)
+
+H <- function(th) matrix(1)
+
+R <- function(th) matrix(0.3)
+
+X_0 <- function(th) matrix(0)
+
+P0 <- function(th) matrix(0.1)
+
+th <- c(1,1)
+u <- c(2,2)
+@
+
+<<test>>=
+M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 @
 
 \section*{Заключение}
