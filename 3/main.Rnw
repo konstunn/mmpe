@@ -191,6 +191,8 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 	Pe <- P0
 	dPe <- dP0
 	N <- length(u)
+	s <- length(th)
+	n <- nrow(Phi)
 
 	for (k in 0:(N-1))
 	{
@@ -200,7 +202,7 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 
 			EAp <- PhiA %*% EAp %*% t(PhiA) + K_Ap %*% Bp %*% t(K_Ap)
 		} else {
-			EAp <- matrix(0, nrow=3, ncol=3)
+			EAp <- matrix(0, nrow=n*(s+1), ncol=n*(s+1))
 		}
 
 		# 4
@@ -208,7 +210,6 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[k+1]
 		} else {
 			Phi_dX_0 <- lapply(dX_0, function(dX_0) Phi %*% dX_0)
-			n <- nrow(Phi)
 			X_Ap <-
 				rbind(Phi, Reduce(rbind, dPhi)) %*% X_0 +
 				rbind(rep(0, n), Reduce(rbind, Phi_dX_0)) +
@@ -219,7 +220,6 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		Pp <- Phi %*% Pe %*% t(Phi) + Gam %*% Q %*% t(Gam)
 		Bp <- H %*% Pp %*% t(H) + R
 		Kp <- Pp %*% t(H) %*% solve(Bp)
-		n <- nrow(Phi)
 		I <- diag(n)
 		Pu <- (I - Kp %*% H) %*% Pp
 		K_p <- Phi %*% Kp
@@ -290,10 +290,7 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		K_Ap <- rbind(K_p, K_Ap)
 
 		# 9
-		s <- length(th)
 		AM <- matrix(NA, nrow=s, ncol=s)
-
-		n <- nrow(Phi)
 
 		EAp__X_Ap__tX_Ap <- EAp + X_Ap %*% t(X_Ap)
 
@@ -383,6 +380,40 @@ u <- c(2,2)
 @
 
 <<test>>=
+M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
+@
+
+Тест 2:
+
+<<mod2, purl=T>>=
+Phi <- function(th) matrix(0.5)
+
+Psi <- function(th) matrix(0.9)
+
+Gam <- function(th) matrix(1)
+
+Q <- function(th) matrix(th[1])
+
+H <- function(th) matrix(1)
+
+R <- function(th) matrix(0.3)
+
+X_0 <- function(th) matrix(0)
+
+P0 <- function(th) matrix(0.1)
+
+th <- as.matrix(c(1))
+@
+
+<<u1>>=
+u <- c(2,2)
+M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
+@
+
+Тест 3:
+
+<<>>=
+u <- c(1,2)
 M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 @
 
