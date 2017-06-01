@@ -43,6 +43,9 @@
 		
 		\textbf{\LARGE{Лабораторная работа № 4}}
 		\medbreak
+		<<Вычисление критерия D-оптимальности одноточечных планов линейных
+		дискретных систем>>
+		\medbreak
 		\small{по дисциплине \\
 		\medbreak
 		<<Математические методы планирования эксперимента>>}
@@ -373,11 +376,22 @@ X_0 <- function(th) matrix(0)
 P0 <- function(th) matrix(0.1)
 
 th <- c(1,1)
-u <- c(2,2)
+
+u1 <- c(2,2)
+u2 <- c(1,1)
+u3 <- c(1,2)
+u4 <- c(2,1)
+u5 <- c(2,0)
+u6 <- c(0,2)
 @
 
 <<test>>=
-M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
+log(det(M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u1)))
+log(det(M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u2)))
+log(det(M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u3)))
+log(det(M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u4)))
+log(det(M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u5)))
+log(det(M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u6)))
 @
 
 \begin{thebibliography}{9}
