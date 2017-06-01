@@ -1,0 +1,8 @@
+*.aux
+*.log
+*.fdb_latexmk
+*.fls
+*.pdf
+main.tex
+cache
+*.swp
