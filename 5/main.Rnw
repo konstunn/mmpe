@@ -121,18 +121,17 @@ PhiA <- function(Phi, K_, dPhi, H, dH)
 {
 	s <- length(dH)
 
-	first_col <- lapply(dH, function(dH_i) K_ %*% dH_i)
-	first_col <- Map('-', dPhi, first_col)
-
+	K__dH <- lapply(dH, function(dH_i) K_ %*% dH_i)
+	first_col <- Map('-', dPhi, K__dH)
 	first_col <- Reduce(rbind, first_col)
-
 	first_col <- rbind(Phi, first_col)
 
 	diag <- Phi - K_ %*% H
 	diag <- replicate(s, diag, simplify=F)
 	diag <- bdiag(diag)
 
-	PhiA <- rbind(rep(0, ncol(diag)), diag)
+	O <- rep(0, ncol(diag))
+	PhiA <- rbind(O, diag)
 	PhiA <- cbind(first_col, PhiA)
 
 	return(PhiA)
@@ -184,6 +183,7 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 	Pe <- P0
 	dPe <- dP0
 	N <- length(u)
+	n <- nrow(Phi)
 
 	for (k in 0:(N-1))
 	{
@@ -201,7 +201,6 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[k+1]
 		} else {
 			Phi_dX_0 <- lapply(dX_0, function(dX_0) Phi %*% dX_0)
-			n <- nrow(Phi)
 			X_Ap <-
 				rbind(Phi, Reduce(rbind, dPhi)) %*% X_0 +
 				rbind(rep(0, n), Reduce(rbind, Phi_dX_0)) +
@@ -212,7 +211,6 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		Pp <- Phi %*% Pe %*% t(Phi) + Gam %*% Q %*% t(Gam)
 		Bp <- H %*% Pp %*% t(H) + R
 		Kp <- Pp %*% t(H) %*% solve(Bp)
-		n <- nrow(Phi)
 		I <- diag(n)
 		Pu <- (I - Kp %*% H) %*% Pp
 		K_p <- Phi %*% Kp
@@ -286,8 +284,6 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		s <- length(th)
 		AM <- matrix(NA, nrow=s, ncol=s)
 
-		n <- nrow(Phi)
-
 		EAp__X_Ap__tX_Ap <- EAp + X_Ap %*% t(X_Ap)
 
 		C0 <- C(0,n,s)
@@ -325,8 +321,10 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 @
 
 <<gradM>>=
-gradM <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
+# arguments are functions except for 'th' and 'u'
+dM <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 {
+	# 1
 	dPhi <- matderiv(Phi, th)
 	dPsi <- matderiv(Psi, th)
 	dH <-	matderiv(H, th)
@@ -341,7 +339,107 @@ gradM <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 	X_0 <- X_0(th)
 	P0 <- P0(th)
 
-	
+	Phi_A <- rbind(Phi, Reduce(rbind, dPhi))
+	PsiA <- rbind(Psi, Reduce(rbind, dPsi))
+
+	# 2
+	dMth <- array(0, c(r, N, s, s))
+	r <- ncol(Psi)
+	s <- length(th)
+	N <- length(u)
+	Pe <- P0
+	n <- nrow(Phi)
+
+	dX_Ap <- array(0, c(r, N, (s+1)*n))
+
+	for (t in 0:(N-1)) {
+		# 3
+		# k, X_Ap, PhiA, PsiA, u, dX_0, Phi, dPhi, X_0, Phi_dX_0
+		if (t == 0)
+		{
+			# dX_Ap
+			for (j in 1:r) {
+				for (tau in 0:(N-1)) {
+					if (tau != 0)
+						dX_Ap[j,tau+1,] <- rep(0, (s+1)*n)
+					else
+						dX_Ap[j,tau+1,] <- PsiA[,j]
+				}
+			}
+			Phi_dX_0 <- lapply(dX_0, function(dX_0_i) Phi %*% dX_0_i)
+			Phi_dX_0 <- Reduce(rbind, Phi_dX_0)
+			O <- matrix(0, n, n)
+			O_Phi_dX_0 <- rbind(O, Phi_dX_0)
+
+			X_Ap <- Phi_A %*% X_0 + O_Phi_dX_0 + PsiA %*% u[t+1]
+		}
+		else
+		{
+			for (j in 1:r) {
+				for (tau in 0:(N-1))
+				{
+					du <- rep(0, r)
+
+					if (t == tau)
+						du[j] <- 1
+
+					dX_Ap[j,tau+1,] <- PhiA %*% dX_Ap[j,tau+1,] + PsiA %*% du
+				}
+			}
+			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[t+1]
+		}
+
+		# 4
+		Pp <- Phi %*% Pe %*% t(Phi) + Gam %*% Q %*% t(Gam)
+		B <- H %*% Pp %*% t(H) + R
+		invB <- solve(B)
+		K <- Pp %*% t(H) %*% invB
+		I <- diag(n)
+		Pu <- (I - K %*% H) %*% Pp
+		K_p <- Phi %*% K
+
+		# 5
+		PhiA <- PhiA(Phi, K_p, dPhi, H, dH)
+
+		C0 <- C(0, n, s)
+
+		# 6
+		O <- array(0, c(r, N, s, s))
+		AdM <- array(0, c(r, N, s, s))
+
+		for (j in 1:r) {
+			for (tau in 0:(N-1)) {
+				O <- matrix(0, s, s)
+				I <- II <- III <- IV <- O
+				for (a in 1:s) {
+					Ca <- C(a,n,s)
+					for (b in 1:s) {
+						Cb <- C(b,n,s)
+						dX_Ap_ <- dX_Ap[j,tau+1]
+
+						# TODO: X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap)
+						#X_Ap__dX_Ap_t__dX_Ap__X_Ap_t
+
+						I[a,b] <- Sp(C0 %*% (X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap)) %*%
+												 t(C0) %*% t(dH[[b]]) %*% invB %*% dH[[a]])
+
+						II[a,b] <- Sp(C0 %*% (X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap)) %*%
+													t(Cb) %*% t(H) %*% invB %*% dH[[a]])
+
+						III[a,b] <- Sp(Ca %*% (X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap))
+													%*% t(C0) %*% dH[[b]] %*% invB %*% H)
+
+						IV[a,b] <- Sp(Ca %*% (X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap)) %*%
+													t(Cb) %*% t(H) %*% invB %*% H)
+					}
+				}
+				# put in dM
+				dMth[j,tau+1,,] <- I + II + III + IV
+			}
+		}
+		Pe <- Pu
+	}
+	return(dMth)
 }
 @
 
