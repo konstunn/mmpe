@@ -343,12 +343,12 @@ dM <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 	PsiA <- rbind(Psi, Reduce(rbind, dPsi))
 
 	# 2
-	dMth <- array(0, c(r, N, s, s))
 	r <- ncol(Psi)
 	s <- length(th)
 	N <- length(u)
 	Pe <- P0
 	n <- nrow(Phi)
+	dMth <- array(0, c(r, N, s, s))
 
 	dX_Ap <- array(0, c(r, N, (s+1)*n))
 
@@ -357,7 +357,6 @@ dM <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		# k, X_Ap, PhiA, PsiA, u, dX_0, Phi, dPhi, X_0, Phi_dX_0
 		if (t == 0)
 		{
-			# dX_Ap
 			for (j in 1:r) {
 				for (tau in 0:(N-1)) {
 					if (tau != 0)
@@ -383,7 +382,7 @@ dM <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 					if (t == tau)
 						du[j] <- 1
 
-					dX_Ap[j,tau+1,] <- PhiA %*% dX_Ap[j,tau+1,] + PsiA %*% du
+					dX_Ap[j,tau+1,] <- as.numeric(PhiA %*% dX_Ap[j,tau+1,] + PsiA %*% du)
 				}
 			}
 			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[t+1]
@@ -415,7 +414,7 @@ dM <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 					Ca <- C(a,n,s)
 					for (b in 1:s) {
 						Cb <- C(b,n,s)
-						dX_Ap_ <- dX_Ap[j,tau+1]
+						dX_Ap_ <- dX_Ap[j,tau+1,]
 
 						# TODO: X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap)
 						#X_Ap__dX_Ap_t__dX_Ap__X_Ap_t
