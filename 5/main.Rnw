@@ -151,8 +151,8 @@ C <- function(i, n, s)
 
 Sp <- function(A) sum(diag(A))
 
-# TODO: put all parameters in a list, take a single list as an argument
-# input arguments are all functions, except for 'th' and 'u'
+# TODO: Put all parameters in a list, take a single list as an argument
+# Input arguments are all functions, except for 'th' and 'u'
 M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 {
 	# 1
@@ -315,7 +315,6 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 		Pe <- Pu
 		dPe <- dPu
 	}
-
 	return(Mth)
 }
 @
@@ -354,7 +353,6 @@ dM <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 
 	for (t in 0:(N-1)) {
 		# 3
-		# k, X_Ap, PhiA, PsiA, u, dX_0, Phi, dPhi, X_0, Phi_dX_0
 		if (t == 0)
 		{
 			for (j in 1:r) {
@@ -416,26 +414,26 @@ dM <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 						Cb <- C(b,n,s)
 						dX_Ap_ <- dX_Ap[j,tau+1,]
 
-						# TODO: X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap)
-						#X_Ap__dX_Ap_t__dX_Ap__X_Ap_t
+						X__dX_t__dX__X_t <- X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap)
 
-						I[a,b] <- Sp(C0 %*% (X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap)) %*%
+						I[a,b] <- Sp(C0 %*% X__dX_t__dX__X_t %*%
 												 t(C0) %*% t(dH[[b]]) %*% invB %*% dH[[a]])
 
-						II[a,b] <- Sp(C0 %*% (X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap)) %*%
+						II[a,b] <- Sp(C0 %*% X__dX_t__dX__X_t %*%
 													t(Cb) %*% t(H) %*% invB %*% dH[[a]])
 
-						III[a,b] <- Sp(Ca %*% (X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap))
+						III[a,b] <- Sp(Ca %*% X__dX_t__dX__X_t
 													%*% t(C0) %*% dH[[b]] %*% invB %*% H)
 
-						IV[a,b] <- Sp(Ca %*% (X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap)) %*%
+						IV[a,b] <- Sp(Ca %*% X__dX_t__dX__X_t %*%
 													t(Cb) %*% t(H) %*% invB %*% H)
 					}
 				}
 				# put in dM
-				dMth[j,tau+1,,] <- I + II + III + IV
+				AdM[j,tau+1,,] <- I + II + III + IV
 			}
 		}
+		dMth <- dMth + AdM
 		Pe <- Pu
 	}
 	return(dMth)
@@ -460,17 +458,6 @@ dM <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 	Q = 0.1, R = 0.3, \bar{x}(t_0) = 0, P_0 = 0.1, \\
 	u(t_0) = u(t_1) = 2, \theta_1 = 1, \theta_1 = 1
 \]
-
-<<MM, echo=F>>=
-Mm <- c(8.35, 12.31, 12.31, 27.7)
-Mm <- matrix(Mm, nrow=2, ncol=2, byrow=TRUE)
-@
-
-Ответ:
-
-<<M, echo=F>>=
-Mm
-@
 
 <<model, purl=T>>=
 Phi <- function(th) matrix(th[1])
@@ -500,12 +487,25 @@ u6 <- c(0,2)
 @
 
 <<test>>=
-log(det(M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u1)))
-log(det(M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u2)))
-log(det(M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u3)))
-log(det(M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u4)))
-log(det(M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u5)))
-log(det(M(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u6)))
+library(plyr)
+
+rez <- dM(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u1)
+alply(rez, c(1,2))
+
+rez <- dM(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u2)
+alply(rez, c(1,2))
+
+rez <- dM(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u3)
+alply(rez, c(1,2))
+
+rez <- dM(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u4)
+alply(rez, c(1,2))
+
+rez <- dM(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u5)
+alply(rez, c(1,2))
+
+rez <- dM(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u6)
+alply(rez, c(1,2))
 @
 
 \begin{thebibliography}{9}
