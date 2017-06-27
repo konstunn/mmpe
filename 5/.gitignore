@@ -4,5 +4,6 @@
 *.fls
 *.pdf
 main.tex
+main.R
 cache
 *.swp
