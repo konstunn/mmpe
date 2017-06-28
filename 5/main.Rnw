@@ -71,8 +71,8 @@
 
 \section{Цель работы}
 
-Реализовать алгоритм вычисления производной информационной матрицы Фишера по
-компонентам вектора входного сигнала.
+Реализовать алгоритм вычисления \emph{производной информационной матрицы
+Фишера} по компонентам вектора входного сигнала.
 
 \section{Задание к лабораторной работе}
 
@@ -93,7 +93,7 @@
 <<options, echo=FALSE, cache=FALSE, purl=F>>=
 opts_chunk$set(purl=TRUE, cache=TRUE, autodep=TRUE, tidy=T)
 dep_auto()
-options(digits=5, width=55, formatR.indent=2)
+options(digits=6, width=55, formatR.indent=2)
 @
 
 <<matderiv>>=
@@ -153,28 +153,32 @@ Sp <- function(A) sum(diag(A))
 
 # TODO: Put all parameters in a list, take a single list as an argument
 # Input arguments are all functions, except for 'th' and 'u'
-M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
+M <- function(model, th, u)
 {
 	# 1
 	# these are lists whose elements are derivatives of matrices by each theta_i
-	dPhi <- matderiv(Phi, th)
-	dPsi <- matderiv(Psi, th)
-	dGam <- matderiv(Gam, th)
-	dH <-	matderiv(H, th)
-	dQ <- matderiv(Q, th)
-	dR <- matderiv(R, th)
-	dX_0 <- matderiv(X_0, th)
-	dP0 <- matderiv(P0, th)
+	with(model, {
+		dPhi <<- matderiv(Phi, th)
+		dPsi <<- matderiv(Psi, th)
+		dGam <<- matderiv(Gam, th)
+		dH <<-	matderiv(H, th)
+		dQ <<- matderiv(Q, th)
+		dR <<- matderiv(R, th)
+		dX_0 <<- matderiv(X_0, th)
+		dP0 <<- matderiv(P0, th)
+	})
 
 	# now these are numeric matrices
-	Phi <- Phi(th)
-	Psi <- Psi(th)
-	Gam <- Gam(th)
-	H <- H(th)
-	Q <- Q(th)
-	R <- R(th)
-	X_0 <- X_0(th)
-	P0 <- P0(th)
+	with(model, {
+		Phi <<- Phi(th)
+		Psi <<- Psi(th)
+		Gam <<- Gam(th)
+		H <<- H(th)
+		Q <<- Q(th)
+		R <<- R(th)
+		X_0 <<- X_0(th)
+		P0 <<- P0(th)
+	})
 
 	PsiA <- rbind(Psi, Reduce(rbind, dPsi))
 
@@ -321,22 +325,26 @@ M <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
 
 <<gradM>>=
 # arguments are functions except for 'th' and 'u'
-dM <- function(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u)
+dM <- function(model, th, u)
 {
 	# 1
-	dPhi <- matderiv(Phi, th)
-	dPsi <- matderiv(Psi, th)
-	dH <-	matderiv(H, th)
-	dX_0 <- matderiv(X_0, th)
+	with(model, {
+		dPhi <<- matderiv(Phi, th)
+		dPsi <<- matderiv(Psi, th)
+		dH <<-	matderiv(H, th)
+		dX_0 <<- matderiv(X_0, th)
+	})
 
-	Phi <- Phi(th)
-	Psi <- Psi(th)
-	Gam <- Gam(th)
-	H <- H(th)
-	Q <- Q(th)
-	R <- R(th)
-	X_0 <- X_0(th)
-	P0 <- P0(th)
+	with(model, {
+		Phi <<- Phi(th)
+		Psi <<- Psi(th)
+		Gam <<- Gam(th)
+		H <<- H(th)
+		Q <<- Q(th)
+		R <<- R(th)
+		X_0 <<- X_0(th)
+		P0 <<- P0(th)
+	})
 
 	Phi_A <- rbind(Phi, Reduce(rbind, dPhi))
 	PsiA <- rbind(Psi, Reduce(rbind, dPsi))
@@ -476,36 +484,19 @@ X_0 <- function(th) matrix(0)
 
 P0 <- function(th) matrix(0.1)
 
+model <- list(Phi=Phi, Psi=Psi, Gam=Gam, Q=Q, H=H, R=R, X_0=X_0, P0=P0)
+
 th <- c(1,1)
 
 u1 <- c(2,2)
-u2 <- c(1,1)
-u3 <- c(1,2)
-u4 <- c(2,1)
-u5 <- c(2,0)
-u6 <- c(0,2)
 @
 
 <<test>>=
 library(plyr)
 
-rez <- dM(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u1)
-alply(rez, c(1,2))
-
-rez <- dM(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u2)
-alply(rez, c(1,2))
-
-rez <- dM(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u3)
-alply(rez, c(1,2))
-
-rez <- dM(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u4)
-alply(rez, c(1,2))
-
-rez <- dM(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u5)
-alply(rez, c(1,2))
-
-rez <- dM(Phi, Psi, Gam, H, Q, R, X_0, P0, th, u6)
-alply(rez, c(1,2))
+alply(dM(model, th, u1), c(1,2))
+(M(model, th, u1 + c(1e-6, 0)) - M(model, th, u1)) / 1e-6
+(M(model, th, u1 + c(0, 1e-6)) - M(model, th, u1)) / 1e-6
 @
 
 \begin{thebibliography}{9}
