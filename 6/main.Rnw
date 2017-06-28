@@ -1,0 +1,525 @@
+
+\documentclass[a4paper,14pt]{extarticle}
+
+\usepackage{cmap}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage[russian]{babel}
+
+\usepackage[a4paper,margin=1.5cm,footskip=1cm,left=2cm,right=1.5cm,top=1.5cm
+	,bottom=2.0cm]{geometry}
+\usepackage{textcase}
+\usepackage{csquotes}
+\usepackage{enumitem}
+
+\usepackage[labelsep=period,justification=centering]{caption}
+
+\usepackage{amsmath}
+\usepackage{pgfplots}
+
+\usepackage{float}
+
+\usepackage{indentfirst}
+
+\usepackage{textgreek}
+
+\setlist[description]{leftmargin=\parindent,labelindent=\parindent}
+
+\begin{document}
+
+\setcounter{secnumdepth}{0}
+
+\begin{titlepage}
+
+	\begin{center}
+		Новосибирский государственный технический университет
+		
+		Факультет прикладной математики и информатики
+		
+		Кафедра теоретической и прикладной информатики
+		
+		\vspace{250pt}
+		
+		\textbf{\LARGE{Лабораторная работа № 6}}
+		\medbreak
+		\small{по дисциплине \\
+		\medbreak
+		<<Математические методы планирования эксперимента>>}
+		\vspace{100pt}
+	\end{center}
+
+	\begin{flushleft}
+		\begin{tabbing}
+			Группа:\qquad\qquad \= ПММ-61\\
+			Студент:            \> Горбунов К. К.\\
+			Преподаватели:      \> доц. Черникова О. С.\\
+			                    \> доц. Филиппова Е. В.
+		\end{tabbing}
+	\end{flushleft}
+
+	\begin{center}
+		\vspace{\fill}
+		Новосибирск, 2017 г.
+	\end{center}
+
+\end{titlepage}
+
+\newpage
+
+\renewenvironment{knitrout}{\setlength{\topsep}{0mm}}{}
+
+\section{Цель работы}
+
+Разработать алгоритмы вычисления градиентов критериев оптимальности, прямую и
+двойственную градиентные процедуры планирования D-оптимальных входных сигналов.
+
+\section{Задание к лабораторной работе}
+
+\begin{enumerate}
+
+\item Написать программу, реализующую алгоритм вычисления градиентов критериев
+	D-оптимальности плана эксперимента.
+
+\item Внедрить разработанные в лабораторных работах 3--6 программные модули в
+	градиентные процедуры планирования (разработанные в лабораторных работах 1,2)
+	входных сигналов.
+
+\item Для различных стохастических линейных дискретных моделей построить с
+	использованием прямой и двойственной градиентных процедур D-оптимальные
+	входные сигналы.
+
+\end{enumerate}
+
+\section{Ход работы}
+
+\subsection{Вспомогательные процедуры}
+
+<<options, echo=FALSE, cache=FALSE, purl=F>>=
+opts_chunk$set(purl=TRUE, cache=TRUE, autodep=TRUE, tidy=T)
+dep_auto()
+options(digits=6, width=55, formatR.indent=2)
+@
+
+<<matderiv>>=
+library(numDeriv)
+# returns list of partial derivatives of matrices by theta_i
+# A - matrix-function
+matderiv <- function(A, th)
+{
+	dA <- jacobian(A, th)
+
+	A <- as.matrix(A(th))
+
+	f <- function(a) list(matrix(a, nrow=nrow(A), ncol=ncol(A)))
+
+	dA <- apply(dA, 2, f)
+
+	dA <- Reduce(c, dA)
+
+	return(dA)
+}
+
+<<PhiA>>=
+library(Matrix)
+PhiA <- function(Phi, K_, dPhi, H, dH)
+{
+	s <- length(dH)
+
+	K__dH <- lapply(dH, function(dH_i) K_ %*% dH_i)
+	first_col <- Map('-', dPhi, K__dH)
+	first_col <- Reduce(rbind, first_col)
+	first_col <- rbind(Phi, first_col)
+
+	diag <- Phi - K_ %*% H
+	diag <- replicate(s, diag, simplify=F)
+	diag <- bdiag(diag)
+
+	O <- rep(0, ncol(diag))
+	PhiA <- rbind(O, diag)
+	PhiA <- cbind(first_col, PhiA)
+
+	return(PhiA)
+}
+@
+
+<<Mf>>=
+C <- function(i, n, s)
+{
+	O <- Reduce(cbind, replicate(i, matrix(0, n, n)))
+	I <- diag(n)
+	C <- cbind(O, I)
+	O <- Reduce(cbind, replicate(s-i, matrix(0, n, n)))
+	C <- cbind(C, O)
+	return(C)
+}
+
+Sp <- function(A) sum(diag(A))
+
+# TODO: Put all parameters in a list, take a single list as an argument
+# Input arguments are all functions, except for 'th' and 'u'
+M <- function(model, th, u)
+{
+	# 1
+	# these are lists whose elements are derivatives of matrices by each theta_i
+	with(model, {
+		dPhi <<- matderiv(Phi, th)
+		dPsi <<- matderiv(Psi, th)
+		dGam <<- matderiv(Gam, th)
+		dH <<-	matderiv(H, th)
+		dQ <<- matderiv(Q, th)
+		dR <<- matderiv(R, th)
+		dX_0 <<- matderiv(X_0, th)
+		dP0 <<- matderiv(P0, th)
+	})
+
+	# now these are numeric matrices
+	with(model, {
+		Phi <<- Phi(th)
+		Psi <<- Psi(th)
+		Gam <<- Gam(th)
+		H <<- H(th)
+		Q <<- Q(th)
+		R <<- R(th)
+		X_0 <<- X_0(th)
+		P0 <<- P0(th)
+	})
+
+	PsiA <- rbind(Psi, Reduce(rbind, dPsi))
+
+	# 2
+	Mth <- 0
+	Pe <- P0
+	dPe <- dP0
+	N <- length(u)
+	n <- nrow(Phi)
+
+	for (k in 0:(N-1))
+	{
+		# 3
+		if (k > 0) {
+			Bp <- H %*% Pp %*% t(H) + R
+
+			EAp <- PhiA %*% EAp %*% t(PhiA) + K_Ap %*% Bp %*% t(K_Ap)
+		} else {
+			EAp <- matrix(0, nrow=3, ncol=3)
+		}
+
+		# 4
+		if (k > 0) {
+			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[k+1]
+		} else {
+			Phi_dX_0 <- lapply(dX_0, function(dX_0) Phi %*% dX_0)
+			X_Ap <-
+				rbind(Phi, Reduce(rbind, dPhi)) %*% X_0 +
+				rbind(rep(0, n), Reduce(rbind, Phi_dX_0)) +
+				PsiA %*% u[k+1]
+		}
+
+		# 5
+		Pp <- Phi %*% Pe %*% t(Phi) + Gam %*% Q %*% t(Gam)
+		Bp <- H %*% Pp %*% t(H) + R
+		Kp <- Pp %*% t(H) %*% solve(Bp)
+		I <- diag(n)
+		Pu <- (I - Kp %*% H) %*% Pp
+		K_p <- Phi %*% Kp
+
+		# 6
+		PhiA <- PhiA(Phi, K_p, dPhi, H, dH)
+
+		# 7
+		# dPp
+		dPhi_Pe_tPhi <- lapply(dPhi, function(dPhi_i) dPhi_i %*% Pe %*% t(Phi))
+		Phi_dPe_tPhi <- lapply(dPe, function(dPe_i) Phi %*% dPe_i %*% t(Phi))
+		Phi_Pe_tdPhi <- lapply(dPhi, function(dPhi_i) Phi %*% Pe %*% t(dPhi_i))
+
+		dPp <- Map('+', dPhi_Pe_tPhi, Phi_dPe_tPhi)
+		dPp <- Map('+', dPp, Phi_Pe_tdPhi)
+
+		dGam_Q_tGam <- lapply(dGam, function(dGam_i) dGam_i %*% Q %*% t(Gam))
+		Gam_dQ_tGam <- lapply(dQ, function(dQ_i) Gam %*% dQ_i %*% t(Gam))
+		Gam_Q_tdGam <- lapply(dGam, function(dGam_i) Gam %*% Q %*% t(dGam_i))
+
+		dPp <- Map('+', dPp, dGam_Q_tGam)
+		dPp <- Map('+', dPp, Gam_dQ_tGam)
+		dPp <- Map('+', dPp, Gam_Q_tdGam)
+
+		# dBp
+		dH_Pp_tH <- lapply(dH, function(dH_i) dH_i %*% Pp %*% t(H))
+		H_dPp_tH <- lapply(dPp, function(dPp_i) H %*% dPp_i %*% t(H))
+		H_Pp_tdH <- lapply(dH, function(dH_i) H %*% Pp %*% t(dH_i))
+
+		dBp <- Map('+', dH_Pp_tH, H_dPp_tH)
+		dBp <- Map('+', dBp, H_Pp_tdH)
+
+		dBp <- Map('+', dBp, dR)
+
+		# dKp
+		dPp_tH <- lapply(dPp, function(dPp_i) dPp_i %*% t(H))
+		Pp_tdH <- lapply(dH, function(dH_i) Pp %*% t(dH_i))
+
+		invBp <- solve(Bp)
+
+		Pp_tH_invBp_dBp_i <- function(dBp_i) Pp %*% t(H) %*% invBp %*% dBp_i
+		Pp_tH_invBp_dBp <- lapply(dBp, Pp_tH_invBp_dBp_i)
+
+		dKp <- Map('+', dPp_tH, Pp_tdH)
+		dKp <- Map('-', dKp, Pp_tH_invBp_dBp)
+		dKp <- lapply(dKp, function(dKp_i) dKp_i %*% invBp)
+
+		# dPu
+		I_Kp_H <- I - Kp %*% H
+		I_Kp_H_dPp <- lapply(dPp, function(dPp_i) I_Kp_H %*% dPp_i)
+
+		dKp_H <- lapply(dKp, function(dKp_i) dKp_i %*% H)
+		Kp_dH <- lapply(dH, function(dH_i) Kp %*% dH_i)
+
+		dKp_H_Kp_dH <- Map('+', dKp_H, Kp_dH)
+
+		dKp_H_Kp_dH_Pp <- lapply(dKp_H_Kp_dH, function(a_i) a_i %*% Pp)
+
+		dPu <- Map('-', I_Kp_H_dPp, dKp_H_Kp_dH_Pp)
+
+		# dK_p
+		dPhi_Kp <- lapply(dPhi, function(dPhi_i) dPhi_i %*% Kp)
+		Phi_dKp <- lapply(dKp, function(dKp_i) Phi %*% dKp_i)
+		dK_p <- Map('+', dPhi_Kp, Phi_dKp)
+
+		# 8
+		K_Ap <- Reduce(rbind, dK_p)
+		K_Ap <- rbind(K_p, K_Ap)
+
+		# 9
+		s <- length(th)
+		AM <- matrix(NA, nrow=s, ncol=s)
+
+		EAp__X_Ap__tX_Ap <- EAp + X_Ap %*% t(X_Ap)
+
+		C0 <- C(0,n,s)
+		tC0 <- t(C0)
+
+		for (i in 1:s) {
+			for (j in 1:s)
+			{
+				I <- Sp(C0 %*% EAp__X_Ap__tX_Ap %*% tC0 %*% t(dH[[j]]) %*% invBp %*%
+								dH[[i]])
+
+				II <- Sp(C0 %*% EAp__X_Ap__tX_Ap %*% t(C(j,n,s)) %*% t(H) %*% invBp %*%
+								 dH[[i]])
+
+				III <- Sp(C(i,n,s) %*% EAp__X_Ap__tX_Ap %*% tC0 %*% dH[[j]] %*%
+									invBp %*% H)
+
+				IV <- Sp(C(i,n,s) %*% EAp__X_Ap__tX_Ap %*% t(C(j,n,s)) %*% t(H) %*%
+								 invBp %*% H)
+
+				V <- 0.5 * Sp(dBp[[i]] %*% invBp %*% dBp[[j]] %*% invBp)
+
+				AM[i,j] <- I + II + III + IV + V
+			}
+		}
+		# 10
+		Mth <- Mth + AM
+
+		Pe <- Pu
+		dPe <- dPu
+	}
+	return(Mth)
+}
+@
+
+<<gradM>>=
+# arguments are functions except for 'th' and 'u'
+dM <- function(model, th, u)
+{
+	# 1
+	with(model, {
+		dPhi <<- matderiv(Phi, th)
+		dPsi <<- matderiv(Psi, th)
+		dH <<-	matderiv(H, th)
+		dX_0 <<- matderiv(X_0, th)
+	})
+
+	with(model, {
+		Phi <<- Phi(th)
+		Psi <<- Psi(th)
+		Gam <<- Gam(th)
+		H <<- H(th)
+		Q <<- Q(th)
+		R <<- R(th)
+		X_0 <<- X_0(th)
+		P0 <<- P0(th)
+	})
+
+	Phi_A <- rbind(Phi, Reduce(rbind, dPhi))
+	PsiA <- rbind(Psi, Reduce(rbind, dPsi))
+
+	# 2
+	r <- ncol(Psi)
+	s <- length(th)
+	N <- length(u)
+	Pe <- P0
+	n <- nrow(Phi)
+	dMth <- array(0, c(r, N, s, s))
+
+	dX_Ap <- array(0, c(r, N, (s+1)*n))
+
+	for (t in 0:(N-1)) {
+		# 3
+		if (t == 0)
+		{
+			for (j in 1:r) {
+				for (tau in 0:(N-1)) {
+					if (tau != 0)
+						dX_Ap[j,tau+1,] <- rep(0, (s+1)*n)
+					else
+						dX_Ap[j,tau+1,] <- PsiA[,j]
+				}
+			}
+			Phi_dX_0 <- lapply(dX_0, function(dX_0_i) Phi %*% dX_0_i)
+			Phi_dX_0 <- Reduce(rbind, Phi_dX_0)
+			O <- matrix(0, n, n)
+			O_Phi_dX_0 <- rbind(O, Phi_dX_0)
+
+			X_Ap <- Phi_A %*% X_0 + O_Phi_dX_0 + PsiA %*% u[t+1]
+		}
+		else
+		{
+			for (j in 1:r) {
+				for (tau in 0:(N-1))
+				{
+					du <- rep(0, r)
+
+					if (t == tau)
+						du[j] <- 1
+
+					dX_Ap[j,tau+1,] <- as.numeric(PhiA %*% dX_Ap[j,tau+1,] + PsiA %*% du)
+				}
+			}
+			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[t+1]
+		}
+
+		# 4
+		Pp <- Phi %*% Pe %*% t(Phi) + Gam %*% Q %*% t(Gam)
+		B <- H %*% Pp %*% t(H) + R
+		invB <- solve(B)
+		K <- Pp %*% t(H) %*% invB
+		I <- diag(n)
+		Pu <- (I - K %*% H) %*% Pp
+		K_p <- Phi %*% K
+
+		# 5
+		PhiA <- PhiA(Phi, K_p, dPhi, H, dH)
+
+		C0 <- C(0, n, s)
+
+		# 6
+		O <- array(0, c(r, N, s, s))
+		AdM <- array(0, c(r, N, s, s))
+
+		for (j in 1:r) {
+			for (tau in 0:(N-1)) {
+				O <- matrix(0, s, s)
+				I <- II <- III <- IV <- O
+				for (a in 1:s) {
+					Ca <- C(a,n,s)
+					for (b in 1:s) {
+						Cb <- C(b,n,s)
+						dX_Ap_ <- dX_Ap[j,tau+1,]
+
+						X__dX_t__dX__X_t <- X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap)
+
+						I[a,b] <- Sp(C0 %*% X__dX_t__dX__X_t %*%
+												 t(C0) %*% t(dH[[b]]) %*% invB %*% dH[[a]])
+
+						II[a,b] <- Sp(C0 %*% X__dX_t__dX__X_t %*%
+													t(Cb) %*% t(H) %*% invB %*% dH[[a]])
+
+						III[a,b] <- Sp(Ca %*% X__dX_t__dX__X_t
+													%*% t(C0) %*% dH[[b]] %*% invB %*% H)
+
+						IV[a,b] <- Sp(Ca %*% X__dX_t__dX__X_t %*%
+													t(Cb) %*% t(H) %*% invB %*% H)
+					}
+				}
+				# put in dM
+				AdM[j,tau+1,,] <- I + II + III + IV
+			}
+		}
+		dMth <- dMth + AdM
+		Pe <- Pu
+	}
+	return(dMth)
+}
+@
+
+\subsection{Тесты}
+
+Тестовая модель 1:
+
+\begin{equation}
+\label{eq:mod1}
+\left\{
+	\begin{array}{lll}
+		x(t_{k+1}) &= \theta_1 x(t_k) + \theta_2 u(t) + w(t), \\
+		y(t_{k+1}) &= x(t_{k+1}) + v(t_{k+1}),\ k = 0, 1.
+	\end{array}
+\right.
+\end{equation}
+
+\[
+	Q = 0.1, R = 0.3, \bar{x}(t_0) = 0, P_0 = 0.1, \\
+	u(t_0) = u(t_1) = 2, \theta_1 = 1, \theta_1 = 1
+\]
+
+<<model, purl=T>>=
+Phi <- function(th) matrix(th[1])
+
+Psi <- function(th) matrix(th[2])
+
+Gam <- function(th) matrix(1)
+
+Q <- function(th) matrix(0.1)
+
+H <- function(th) matrix(1)
+
+R <- function(th) matrix(0.3)
+
+X_0 <- function(th) matrix(0)
+
+P0 <- function(th) matrix(0.1)
+
+model <- list(Phi=Phi, Psi=Psi, Gam=Gam, Q=Q, H=H, R=R, X_0=X_0, P0=P0)
+
+th <- c(1,1)
+
+u1 <- c(2,2)
+@
+
+<<test>>=
+library(plyr)
+
+alply(dM(model, th, u1), c(1,2))
+(M(model, th, u1 + c(1e-6, 0)) - M(model, th, u1)) / 1e-6
+(M(model, th, u1 + c(0, 1e-6)) - M(model, th, u1)) / 1e-6
+@
+
+\begin{thebibliography}{9}
+
+\begin{sloppypar}
+
+\bibitem{mono} Активная параметрическая идентификация стохастических линейных
+	систем: монография / В.И. Денисов, В.М. Чубич, О.С. Черникова, Д.И. Бобылева.
+		--- Новосибирск : Изд-во НГТУ, 2009. --- 192 с.
+		(Серия <<Монографии НГТУ>>).
+
+\end{sloppypar}
+
+\bibitem{knitr16} Yihui Xie (2016). knitr: A General-Purpose Package for
+	Dynamic Report Generation in R. R package version 1.15.1.
+
+\end{thebibliography}
+
+\end{document}
+
+# vim: ts=2 sw=2
