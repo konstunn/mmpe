@@ -104,20 +104,24 @@ options(digits=6, width=55, formatR.indent=2)
 <<functions, purl=T>>=
 s2q <- function(s) s * (s + 1) / 2 + 1
 
-randPlan <- function(s, th, X)
+randPlan <- function(model, s, N, th=NULL)
 {
 	q <- s2q(s)
 
 	p <- rep(1/q, q)
 
-	th <- runif(s, min=-1, max=1)
+	if (is.null(th))
+		th <- runif(s, min=-1, max=1)
 
 	repeat {
-		u <- runif(s*q, min=-1, max=1)
+		u <- runif(N*q, min=-1, max=1)
 
-		U <- matrix(a, nrow=q)
+		U <- matrix(u, nrow=q, ncol=N)
 
-		criterion <- X(c(U, p), th)
+		xi <- c(U, p)
+		attr(xi, 's') <- s
+		attr(xi, 'q') <- q
+		criterion <- X(model, xi, th)
 
 		# plan must be non-singular
 		if (!is.na(criterion))
@@ -126,19 +130,19 @@ randPlan <- function(s, th, X)
 	return(list(th=th, U=U, p=p, criterion=criterion))
 }
 
-Mxi <- function(u, th, M=NULL)
+library(plyr)
+Mxi <- function(model, xi, th)
 {
 	s <- length(th)
-	q <- length(u) / (s + 1)
+	q <- attr(xi, 'q')
 
-	a <- head(u, n=-q)
+	u <- head(xi, n=-q)
+	p <- tail(xi, n=q)
 
-	p <- tail(u, n=q)
-
-	A <- matrix(a, nrow=q)
+	U <- matrix(u, nrow=q)
 
 	# list of matrices for every point of the plan
-	Mi <- plyr::alply(A, 1, M, th=th)
+	Mi <- alply(U, 1, M, model=model, th=th)
 
 	# multiply by weights 'p'
 	Mi <- Map('*', Mi, p)
@@ -149,9 +153,9 @@ Mxi <- function(u, th, M=NULL)
 	return(Mxi)
 }
 
-X <- function(xi, th)
+X <- function(model, xi, th)
 {
-	Mxi <- Mxi(xi, th)
+	Mxi <- Mxi(model, xi, th)
 	return(-log(det(Mxi)))
 }
 
