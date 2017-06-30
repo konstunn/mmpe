@@ -251,6 +251,7 @@ dualproc <- function(model, l)
 	eta <- s
 
 	U <- l$U
+	N <- ncol(U)
 	p <- l$p
 
 	repeat {
@@ -261,7 +262,7 @@ dualproc <- function(model, l)
 		Mxi <- Mxi(model, xi, th)
 
 		repeat {
-			u <- runif(s, min=-1, max=1)
+			u <- runif(N, min=-1, max=1)
 
 			# 2
 			l <- slsqp(u, function(u, model, Mxi, th) -mu(u, model, Mxi, th),
