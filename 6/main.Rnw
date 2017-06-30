@@ -104,8 +104,9 @@ options(digits=6, width=55, formatR.indent=2)
 <<functions, purl=T>>=
 s2q <- function(s) s * (s + 1) / 2 + 1
 
-randPlan <- function(model, s, N, th=NULL)
+randPlan <- function(model, N, th=NULL)
 {
+	s <- model$s
 	q <- s2q(s)
 
 	p <- rep(1/q, q)
@@ -159,9 +160,9 @@ X <- function(model, xi, th)
 	return(-log(det(Mxi)))
 }
 
-mu <- function(a, Mxi, th)
+mu <- function(a, model, Mxi, th)
 {
-	rez <- Sp(solve(Mxi) %*% M(a, th))
+	rez <- Sp(solve(Mxi) %*% M(a, model, th))
 	return(rez)
 }
 
@@ -173,15 +174,17 @@ hina <- function(a)
 	return(h)
 }
 
-Xtau <- function(tau, a, A, p, th)
+Xtau <- function(tau, model, a, U, p, th)
 {
-	A <- rbind(A, a)
+	U <- rbind(U, a)
 
 	p <- p * (1 - tau)
 	p <- c(p, tau)
 
-	Xtau <- X(c(A, p), th)
+	xi <- c(U, p)
+	attr(xi, 'q') <- nrow(U)
 
+	Xtau <- X(model, xi, th)
 	return(Xtau)
 }
 @
@@ -191,7 +194,7 @@ clean <- function(l)
 {
 	dp <- 5e-2
 	dn <- 6e-1
-	A <- l$A
+	A <- l$U
 	p <- l$p
 
 	# clean by weight
@@ -231,12 +234,12 @@ clean <- function(l)
 		}
 		i <- i + 1
 	}
-	return(list(A=A, p=p))
+	return(list(U=A, p=p))
 }
 @
 
 <<dualproc, purl=TRUE>>=
-dualproc <- function(l)
+dualproc <- function(model, l)
 {
 	library(nloptr)
 
@@ -247,25 +250,30 @@ dualproc <- function(l)
 	s <- length(th)
 	eta <- s
 
-	A <- l$A
+	U <- l$U
 	p <- l$p
 
 	repeat {
 		# 1
-		Mxi <- Mxi(c(A, p), th)
+		xi <- c(U, p)
+		attr(xi, 'q') <- nrow(U)
+
+		Mxi <- Mxi(model, xi, th)
 
 		repeat {
-			a <- runif(s, min=-1, max=1)
+			u <- runif(s, min=-1, max=1)
 
 			# 2
-			l <- slsqp(a, function(a, Mxi, th) -mu(a, Mxi, th), hin=hina, Mxi=Mxi,
-								 th=th, control=nlopts)
-			a <- l$par
+			l <- slsqp(u, function(u, model, Mxi, th) -mu(u, model, Mxi, th),
+								 hin=hina, Mxi=Mxi, model=model, th=th, control=nlopts)
+			u <- l$par
 			mu <- -l$value
 
 			if (abs(mu - eta) <= d) {
-				criterion <- X(c(A, p), th)
-				return(list(A=A, p=p, criterion=criterion))
+				xi <- c(U, p)
+				attr(xi, 'q') <- nrow(U)
+				criterion <- X(model, xi, th)
+				return(list(U=U, p=p, criterion=criterion))
 			}
 
 			if (mu > eta)
@@ -278,31 +286,30 @@ dualproc <- function(l)
 		# 3
 		repeat {
 			x0 <- runif(1)
-			if (!is.nan(Xtau(x0, a, A, p, th)))
+			X <- Xtau(model=model, tau=x0, a=u, U=U, p=p, th=th)
+			if (!is.nan(X))
 				break
 		}
-		tau <- slsqp(x0, fn=Xtau, hin=hint, a=a, A=A, p=p, th=th,
+		tau <- slsqp(x0, Xtau, hin=hint, model=model, a=u, U=U, p=p, th=th,
 								 control=nlopts)$par
 
 		# 4: add 'a' to plan
 		p <- p * (1 - tau)
 		p <- c(p, tau)
 
-		A <- rbind(A, a)
+		U <- rbind(U, u)
 
-		l <- clean(list(A=A, p=p))
-		A <- l$A
+		l <- clean(list(U=U, p=p))
+		U <- l$U
 		p <- l$p
 
 		# and continue
 	}
-	return(list(A=A, p=p))
+	return(list(U=U, p=p))
 }
 @
 
-
-
-<<matderiv>>=
+<<matderiv, purl=T>>=
 library(numDeriv)
 # returns list of partial derivatives of matrices by theta_i
 # A - matrix-function
@@ -317,11 +324,11 @@ matderiv <- function(A, th)
 	dA <- apply(dA, 2, f)
 
 	dA <- Reduce(c, dA)
-
 	return(dA)
 }
+@
 
-<<PhiA>>=
+<<PhiA, purl=T>>=
 library(Matrix)
 PhiA <- function(Phi, K_, dPhi, H, dH)
 {
@@ -339,12 +346,11 @@ PhiA <- function(Phi, K_, dPhi, H, dH)
 	O <- rep(0, ncol(diag))
 	PhiA <- rbind(O, diag)
 	PhiA <- cbind(first_col, PhiA)
-
 	return(PhiA)
 }
 @
 
-<<Mf>>=
+<<Mf, purl=T>>=
 C <- function(i, n, s)
 {
 	O <- Reduce(cbind, replicate(i, matrix(0, n, n)))
@@ -359,7 +365,7 @@ Sp <- function(A) sum(diag(A))
 
 # TODO: Put all parameters in a list, take a single list as an argument
 # Input arguments are all functions, except for 'th' and 'u'
-M <- function(model, th, u)
+M <- function(u, model, th)
 {
 	# 1
 	# these are lists whose elements are derivatives of matrices by each theta_i
@@ -529,7 +535,7 @@ M <- function(model, th, u)
 }
 @
 
-<<gradM>>=
+<<gradM, purl=T>>=
 # arguments are functions except for 'th' and 'u'
 dM <- function(model, th, u)
 {
@@ -690,7 +696,7 @@ X_0 <- function(th) matrix(0)
 
 P0 <- function(th) matrix(0.1)
 
-model <- list(Phi=Phi, Psi=Psi, Gam=Gam, Q=Q, H=H, R=R, X_0=X_0, P0=P0)
+model <- list(Phi=Phi, Psi=Psi, Gam=Gam, Q=Q, H=H, R=R, X_0=X_0, P0=P0, s=2)
 
 th <- c(1,1)
 
@@ -699,10 +705,10 @@ u1 <- c(2,2)
 
 \subsection{Начальный план}
 
-<<>>=
+<<purl=F>>=
 set.seed(104);
 
-l <- genInitPlan(s=2)
+l <- randPlan(s=2)
 (th <- l$th)
 
 # print initial data
