@@ -122,7 +122,7 @@ randPlan <- function(model, N, th=NULL)
 		xi <- c(U, p)
 		attr(xi, 's') <- s
 		attr(xi, 'q') <- q
-		criterion <- X(model, xi, th)
+		criterion <- X(xi, model, th)
 
 		# plan must be non-singular
 		if (!is.na(criterion))
@@ -136,6 +136,10 @@ Mxi <- function(model, xi, th)
 {
 	s <- length(th)
 	q <- attr(xi, 'q')
+	if (is.null(q)) {
+		#warning('attr q of xi is null, use s2q')
+		q <- s2q(s)
+	}
 
 	u <- head(xi, n=-q)
 	p <- tail(xi, n=q)
@@ -154,7 +158,7 @@ Mxi <- function(model, xi, th)
 	return(Mxi)
 }
 
-X <- function(model, xi, th)
+X <- function(xi, model, th)
 {
 	Mxi <- Mxi(model, xi, th)
 	return(-log(det(Mxi)))
@@ -184,7 +188,7 @@ Xtau <- function(tau, model, a, U, p, th)
 	xi <- c(U, p)
 	attr(xi, 'q') <- nrow(U)
 
-	Xtau <- X(model, xi, th)
+	Xtau <- X(xi, model, th)
 	return(Xtau)
 }
 @
@@ -273,7 +277,7 @@ dualproc <- function(model, l)
 			if (abs(mu - eta) <= d) {
 				xi <- c(U, p)
 				attr(xi, 'q') <- nrow(U)
-				criterion <- X(model, xi, th)
+				criterion <- X(xi, model, th)
 				return(list(U=U, p=p, criterion=criterion))
 			}
 
@@ -307,6 +311,37 @@ dualproc <- function(model, l)
 		# and continue
 	}
 	return(list(U=U, p=p))
+}
+
+directproc <- function(model, l) {
+	th <- l$th
+	U <- l$U
+	p <- l$p
+	xi <- c(U, p)
+	q <- nrow(U)
+
+	hin <- function(u) {
+		p <- tail(u, n=q)
+		a <- head(u, n=-q)
+		h <- p - 1e-11
+		h <- c(h, 1 - a)
+		h <- c(h, a + 1)
+		return(h)
+	}
+
+	heq <- function(u) {
+		p <- tail(u, n=q)
+		return(sum(p) - 1)
+	}
+
+	l1 <- slsqp(xi, X, hin=hin, heq=heq, model=model, th=th)
+
+	p <- tail(l1$par, q)
+	U <- head(l1$par, -q)
+
+	U <- matrix(U, nrow=q)
+
+	return(list(U=U, p=p, th=th, criterion=l1$value))
 }
 @
 
@@ -709,14 +744,7 @@ u1 <- c(2,2)
 <<purl=F>>=
 set.seed(104);
 
-l <- randPlan(s=2)
-(th <- l$th)
-
-# print initial data
-l$A
-l$p
-
-(val <- mldm(c(l$A, l$p), l$th))
+(l0 <- randPlan(model, 2, th))
 @
 
 \subsection{Планирование с помощью \emph{прямой} процедуры}
