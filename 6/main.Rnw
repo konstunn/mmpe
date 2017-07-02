@@ -95,15 +95,23 @@
 
 \subsection{Вспомогательные процедуры}
 
-<<options, echo=FALSE, cache=FALSE, purl=F>>=
+<<setup, echo=FALSE, cache=FALSE, purl=F>>=
 opts_chunk$set(purl=TRUE, cache=TRUE, autodep=TRUE, tidy=T)
 dep_auto()
 options(digits=6, width=55, formatR.indent=2)
 @
 
+<<libraries, purl=T>>=
+library(numDeriv)
+library(plyr)
+library(nloptr)
+library(Matrix)
+@
+
 <<functions, purl=T>>=
 s2q <- function(s) s * (s + 1) / 2 + 1
 
+# FIXME: take case r > 1 into account
 randPlan <- function(model, N, th=NULL)
 {
 	s <- model$s
@@ -131,13 +139,12 @@ randPlan <- function(model, N, th=NULL)
 	return(list(th=th, U=U, p=p, criterion=criterion))
 }
 
-library(plyr)
+# FIXME: take case r > 1 into account
 Mxi <- function(model, xi, th)
 {
 	s <- length(th)
 	q <- attr(xi, 'q')
 	if (is.null(q)) {
-		#warning('attr q of xi is null, use s2q')
 		q <- s2q(s)
 	}
 
@@ -245,8 +252,6 @@ clean <- function(l)
 <<dualproc, purl=TRUE>>=
 dualproc <- function(model, l)
 {
-	library(nloptr)
-
 	nlopts <- list(xtol_rel=1e-6, maxeval=1e3)
 
 	d <- 1e-10
@@ -346,7 +351,6 @@ directproc <- function(model, l) {
 @
 
 <<matderiv, purl=T>>=
-library(numDeriv)
 # returns list of partial derivatives of matrices by theta_i
 # A - matrix-function
 matderiv <- function(A, th)
@@ -365,7 +369,6 @@ matderiv <- function(A, th)
 @
 
 <<PhiA, purl=T>>=
-library(Matrix)
 PhiA <- function(Phi, K_, dPhi, H, dH)
 {
 	s <- length(dH)
