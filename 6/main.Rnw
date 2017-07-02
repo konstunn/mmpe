@@ -431,7 +431,9 @@ M <- function(u, model, th)
 	Mth <- 0
 	Pe <- P0
 	dPe <- dP0
-	N <- length(u)
+	if (is.vector(u))
+		u <- t(u)
+	N <- ncol(u)
 	n <- nrow(Phi)
 
 	for (k in 0:(N-1))
@@ -447,13 +449,13 @@ M <- function(u, model, th)
 
 		# 4
 		if (k > 0) {
-			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[k+1]
+			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[,k+1]
 		} else {
 			Phi_dX_0 <- lapply(dX_0, function(dX_0) Phi %*% dX_0)
 			X_Ap <-
 				rbind(Phi, Reduce(rbind, dPhi)) %*% X_0 +
 				rbind(rep(0, n), Reduce(rbind, Phi_dX_0)) +
-				PsiA %*% u[k+1]
+				PsiA %*% u[,k+1]
 		}
 
 		# 5
@@ -593,7 +595,9 @@ dM <- function(u, model, th)
 	# 2
 	r <- ncol(Psi)
 	s <- length(th)
-	N <- length(u)
+	if (is.vector(u))
+		u <- t(u)
+	N <- ncol(u)
 	Pe <- P0
 	n <- nrow(Phi)
 	dMth <- array(0, c(r, N, s, s))
@@ -617,7 +621,7 @@ dM <- function(u, model, th)
 			O <- matrix(0, n, n)
 			O_Phi_dX_0 <- rbind(O, Phi_dX_0)
 
-			X_Ap <- Phi_A %*% X_0 + O_Phi_dX_0 + PsiA %*% u[t+1]
+			X_Ap <- Phi_A %*% X_0 + O_Phi_dX_0 + PsiA %*% u[,t+1]
 		}
 		else
 		{
@@ -632,7 +636,7 @@ dM <- function(u, model, th)
 					dX_Ap[j,tau+1,] <- as.numeric(PhiA %*% dX_Ap[j,tau+1,] + PsiA %*% du)
 				}
 			}
-			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[t+1]
+			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[,t+1]
 		}
 
 		# 4
