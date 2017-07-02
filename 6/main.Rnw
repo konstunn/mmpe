@@ -165,24 +165,59 @@ Mxi <- function(model, xi, th)
 	return(Mxi)
 }
 
+# FIXME: take case r > 1 into account
 X <- function(xi, model, th)
 {
 	Mxi <- Mxi(model, xi, th)
 	return(-log(det(Mxi)))
 }
 
+# NOTE: does not work for many inputs systems
+dXdxi <- function(xi, model, th)
+{
+	s <- length(th)
+	q <- s2q(s)
+
+	p <- tail(xi, q)
+	u <- head(xi, -q)
+	U <- matrix(u, q)
+
+	dMdu <- aaply(U, 1, dM, model=model, th=th)
+	dMdu <- alply(dMdu, 1)
+
+	dMdu <- Map('*', dMdu, -p)
+
+	dMdu <- laply(dMdu, function(x) x)
+	dMdu <- alply(dMdu, c(2,1))
+
+	Mxi <- Mxi(model, xi, th)
+	invMxi <- solve(Mxi)
+
+	dMdu <- lapply(dMdu, function(dMdu_i) invMxi %*% dMdu_i)
+
+	dXdu <- Map(Sp, dMdu)
+
+	Mi <- alply(U, 1, M, model=model, th=th)
+
+	Mi <- lapply(Mi, function(M_i) -invMxi %*% M_i)
+	dXdp <- Map(Sp, Mi)
+
+	dXdxi <- c(dXdu, dXdp)
+
+	dXdxi <- unlist(dXdxi, use.names=F)
+
+	return(dXdxi)
+}
+
+# NOTE: does not work for systems with many input channels
+dXdp <- function(xi, model, th) {
+
+}
+
 mu <- function(a, model, Mxi, th)
 {
 	rez <- Sp(solve(Mxi) %*% M(a, model, th))
 	return(rez)
-}
-
-# inequalities constraints function
-hina <- function(a)
-{
-	h <- 1 - a
-	h <- c(h, a + 1)
-	return(h)
 }
 
 Xtau <- function(tau, model, a, U, p, th)
@@ -201,6 +236,7 @@ Xtau <- function(tau, model, a, U, p, th)
 @
 
 <<clean-plan, purl=T>>=
+# NOTE: does not work for many inputs systems
 clean <- function(l)
 {
 	dp <- 5e-2
@@ -252,6 +288,14 @@ clean <- function(l)
 <<dualproc, purl=TRUE>>=
 dualproc <- function(model, l)
 {
+	# inequalities constraints function
+	hina <- function(a)
+	{
+		h <- 1 - a
+		h <- c(h, a + 1)
+		return(h)
+	}
+
 	nlopts <- list(xtol_rel=1e-6, maxeval=1e3)
 
 	d <- 1e-10
@@ -404,6 +448,7 @@ Sp <- function(A) sum(diag(A))
 
 M <- function(u, model, th)
 {
+	# TODO: check system for conformability, stability, controlability
 	# 1
 	# these are lists whose elements are derivatives of matrices by each theta_i
 	dPhi <- matderiv(model$Phi, th)
@@ -566,6 +611,7 @@ M <- function(u, model, th)
 		Pe <- Pu
 		dPe <- dPu
 	}
+	dimnames(Mth) <- NULL
 	return(Mth)
 }
 @
@@ -689,6 +735,7 @@ dM <- function(u, model, th)
 		dMth <- dMth + AdM
 		Pe <- Pu
 	}
+	dimnames(dMth) <- NULL
 	return(dMth)
 }
 @
@@ -713,23 +760,17 @@ dM <- function(u, model, th)
 \]
 
 <<model, purl=T>>=
-Phi <- function(th) matrix(th[1])
-
-Psi <- function(th) matrix(th[2])
-
-Gam <- function(th) matrix(1)
-
-Q <- function(th) matrix(0.1)
-
-H <- function(th) matrix(1)
-
-R <- function(th) matrix(0.3)
-
-X_0 <- function(th) matrix(0)
-
-P0 <- function(th) matrix(0.1)
-
-model <- list(Phi=Phi, Psi=Psi, Gam=Gam, Q=Q, H=H, R=R, X_0=X_0, P0=P0, s=2)
+model <- list(
+	Phi = function(th) matrix(th[1]),
+	Psi = function(th) matrix(th[2]),
+	Gam = function(th) matrix(1),
+	Q = function(th) matrix(0.1),
+	H = function(th) matrix(1),
+	R = function(th) matrix(0.3),
+	X_0 = function(th) matrix(0),
+	P0 = function(th) matrix(0.1),
+	s = 2
+)
 
 th <- c(1,1)
 
