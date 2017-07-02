@@ -402,34 +402,28 @@ C <- function(i, n, s)
 
 Sp <- function(A) sum(diag(A))
 
-# TODO: Put all parameters in a list, take a single list as an argument
-# Input arguments are all functions, except for 'th' and 'u'
 M <- function(u, model, th)
 {
 	# 1
 	# these are lists whose elements are derivatives of matrices by each theta_i
-	with(model, {
-		dPhi <<- matderiv(Phi, th)
-		dPsi <<- matderiv(Psi, th)
-		dGam <<- matderiv(Gam, th)
-		dH <<-	matderiv(H, th)
-		dQ <<- matderiv(Q, th)
-		dR <<- matderiv(R, th)
-		dX_0 <<- matderiv(X_0, th)
-		dP0 <<- matderiv(P0, th)
-	})
+	dPhi <- matderiv(model$Phi, th)
+	dPsi <- matderiv(model$Psi, th)
+	dGam <- matderiv(model$Gam, th)
+	dH <-	matderiv(model$H, th)
+	dQ <- matderiv(model$Q, th)
+	dR <- matderiv(model$R, th)
+	dX_0 <- matderiv(model$X_0, th)
+	dP0 <- matderiv(model$P0, th)
 
 	# now these are numeric matrices
-	with(model, {
-		Phi <<- Phi(th)
-		Psi <<- Psi(th)
-		Gam <<- Gam(th)
-		H <<- H(th)
-		Q <<- Q(th)
-		R <<- R(th)
-		X_0 <<- X_0(th)
-		P0 <<- P0(th)
-	})
+	Phi <- model$Phi(th)
+	Psi <- model$Psi(th)
+	Gam <- model$Gam(th)
+	H <- model$H(th)
+	Q <- model$Q(th)
+	R <- model$R(th)
+	X_0 <- model$X_0(th)
+	P0 <- model$P0(th)
 
 	PsiA <- rbind(Psi, Reduce(rbind, dPsi))
 
@@ -576,26 +570,22 @@ M <- function(u, model, th)
 
 <<gradM, purl=T>>=
 # arguments are functions except for 'th' and 'u'
-dM <- function(model, th, u)
+dM <- function(u, model, th)
 {
 	# 1
-	with(model, {
-		dPhi <<- matderiv(Phi, th)
-		dPsi <<- matderiv(Psi, th)
-		dH <<-	matderiv(H, th)
-		dX_0 <<- matderiv(X_0, th)
-	})
+	dPhi <- matderiv(model$Phi, th)
+	dPsi <- matderiv(model$Psi, th)
+	dH <-	matderiv(model$H, th)
+	dX_0 <- matderiv(model$X_0, th)
 
-	with(model, {
-		Phi <<- Phi(th)
-		Psi <<- Psi(th)
-		Gam <<- Gam(th)
-		H <<- H(th)
-		Q <<- Q(th)
-		R <<- R(th)
-		X_0 <<- X_0(th)
-		P0 <<- P0(th)
-	})
+	Phi <- model$Phi(th)
+	Psi <- model$Psi(th)
+	Gam <- model$Gam(th)
+	H <- model$H(th)
+	Q <- model$Q(th)
+	R <- model$R(th)
+	X_0 <- model$X_0(th)
+	P0 <- model$P0(th)
 
 	Phi_A <- rbind(Phi, Reduce(rbind, dPhi))
 	PsiA <- rbind(Psi, Reduce(rbind, dPsi))
