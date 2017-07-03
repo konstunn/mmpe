@@ -209,15 +209,20 @@ dXdxi <- function(xi, model, th)
 	return(dXdxi)
 }
 
-# NOTE: does not work for systems with many input channels
-dXdp <- function(xi, model, th) {
-
+mu <- function(u, model, Mxi, th)
+{
+	rez <- Sp(solve(Mxi) %*% M(u, model, th))
+	return(rez)
 }
 
-mu <- function(a, model, Mxi, th)
+dmu <- function(u, model, Mxi, th)
 {
-	rez <- Sp(solve(Mxi) %*% M(a, model, th))
-	return(rez)
+	invMxi <- solve(Mxi)
+	dMdu <- dM(u, model, th)
+	dMdu <- alply(dMdu, c(2,1))
+	dmu_du <- lapply(dMdu, function(dMdu_i) Sp(invMxi %*% dMdu_i))
+	dmu_du <- unlist(dmu_du)
+	return(-dmu_du)
 }
 
 Xtau <- function(tau, model, a, U, p, th)
@@ -286,7 +291,7 @@ clean <- function(l)
 @
 
 <<dualproc, purl=TRUE>>=
-dualproc <- function(model, l)
+dualproc <- function(model, l, use.grad=T)
 {
 	# inequalities constraints function
 	hina <- function(a)
@@ -296,9 +301,14 @@ dualproc <- function(model, l)
 		return(h)
 	}
 
-	nlopts <- list(xtol_rel=1e-6, maxeval=1e3)
+	if (use.grad)
+		gr <- dmu
+	else
+		gr <- NULL
 
-	d <- 1e-10
+	nlopts <- list(xtol_rel=1e-2, maxeval=1e3)
+
+	d <- 1e-2
 	th <- l$th
 	s <- length(th)
 	eta <- s
@@ -319,7 +329,7 @@ dualproc <- function(model, l)
 
 			# 2
 			l <- slsqp(u, function(u, model, Mxi, th) -mu(u, model, Mxi, th),
-								 hin=hina, Mxi=Mxi, model=model, th=th, control=nlopts)
+								 gr=gr, hin=hina, Mxi=Mxi, model=model, th=th, control=nlopts)
 			u <- l$par
 			mu <- -l$value
 
@@ -362,7 +372,8 @@ dualproc <- function(model, l)
 	return(list(U=U, p=p))
 }
 
-directproc <- function(model, l) {
+directproc <- function(model, l, use.grad=T)
+{
 	th <- l$th
 	U <- l$U
 	p <- l$p
@@ -383,14 +394,23 @@ directproc <- function(model, l) {
 		return(sum(p) - 1)
 	}
 
-	l1 <- slsqp(xi, X, hin=hin, heq=heq, model=model, th=th)
+	nlopts <- list(xtol_rel=1e-3, maxeval=1e3)
+
+	if (use.grad)
+		gr <- dXdxi
+	else
+		gr <- NULL
+
+	l1 <- slsqp(xi, X, gr=gr, hin=hin, heq=heq, model=model, th=th,
+							control=nlopts)
 
 	p <- tail(l1$par, q)
 	U <- head(l1$par, -q)
 
 	U <- matrix(U, nrow=q)
 
-	return(list(U=U, p=p, th=th, criterion=l1$value))
+	return(list(U=U, p=p, th=th, criterion=l1$value, iter=l1$iter,
+							message=l1$message))
 }
 @
 
@@ -773,25 +793,32 @@ model <- list(
 )
 
 th <- c(1,1)
-
-u1 <- c(2,2)
 @
 
 \subsection{Начальный план}
 
-<<purl=F>>=
-set.seed(104);
+<<init-plan, purl=F>>=
+set.seed(101);
 
-(l0 <- randPlan(model, 2, th))
+(l <- randPlan(model, 2, th))
 @
 
 \subsection{Планирование с помощью \emph{прямой} процедуры}
 
+<<direct>>=
+lsd <- directproc(model, l)
+lsd$U
+lsd$p
+lsd$criterion
 
+clean(lsd)
+@
 
+\newpage
 \subsection{Планирование с помощью \emph{двойственной} процедуры}
-
-
+<<dual>>=
+dualproc(model, l)
+@
 
 \begin{thebibliography}{9}
 
