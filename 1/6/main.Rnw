@@ -812,9 +812,15 @@ lsd$p
 lsd$criterion
 
 clean(lsd)
+
+lsd <- directproc(model, l, F)
+lsd$U
+lsd$p
+lsd$criterion
+
+clean(lsd)
 @
 
-\newpage
 \subsection{Планирование с помощью \emph{двойственной} процедуры}
 <<dual>>=
 dualproc(model, l)
