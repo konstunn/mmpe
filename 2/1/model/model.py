@@ -160,28 +160,21 @@ class Model(object):
                 # TODO: this should be function of time
                 u_t_k = tf.slice(u, [0, k], [r, 1])
 
-                def state_propagate(x, t):
+                def state_propagate(x):
                     w = w_dist.sample()
                     w = tf.reshape(w, [p, 1])
                     Fx = tf.matmul(F, x, name='Fx')
                     Cu = tf.matmul(C, u_t_k, name='Cu')
                     Gw = tf.matmul(G, w, name='Gw')
-                    dx = Fx + Cu + Gw
-                    return dx
+                    x = Fx + Cu + Gw
+                    return x
 
                 tk = tf.slice(t, [k], [2], 'tk')
 
                 x_k = x[:, -1]
                 x_k = tf.reshape(x_k, [n, 1])
 
-                # decreased default tolerance to avoid max_num_steps exceeded
-                # error may increase max_num_steps as an alternative
-                x_k = tf.contrib.integrate.odeint(state_propagate, x_k, tk,
-                                                  name='state_propagate',
-                                                  rtol=1e-4,
-                                                  atol=1e-10)
-
-                x_k = x_k[-1]   # last state (last row)
+                x_k = state_propagate(x_k)
 
                 y_k = sim_obs(x_k)
 
@@ -275,25 +268,21 @@ class Model(object):
                 t_k = tf.slice(t, [k], [2], 't_k')
 
                 # TODO: extract Kalman filter to a separate class
-                def state_predict(x, t):
+                def state_predict(x):
                     Fx = tf.matmul(F, x, name='Fx')
                     Cu = tf.matmul(C, u_t_k, name='Cu')
-                    dx = Fx + Cu
-                    return dx
+                    x = Fx + Cu
+                    return x
 
-                def covariance_predict(P, t):
+                def covariance_predict(P):
                     GQtG = tf.matmul(G @ Q, G, transpose_b=True)
                     PtF = tf.matmul(P, F, transpose_b=True)
-                    dP = tf.matmul(F, P) + PtF + GQtG
-                    return dP
+                    P = tf.matmul(F, P) + PtF + GQtG
+                    return P
 
-                x = tf.contrib.integrate.odeint(state_predict, x, t_k,
-                                                name='state_predict')
-                x = x[-1]
+                x = state_predict(x)
 
-                P = tf.contrib.integrate.odeint(covariance_predict, P, t_k,
-                                                name='covariance_predict')
-                P = P[-1]
+                P = covariance_predict(P)
 
                 E = y_k - tf.matmul(H, x)
 
@@ -351,6 +340,7 @@ class Model(object):
         rank = np.linalg.matrix_rank(ctrb_matrix)
         return rank == n
 
+    # FIXME: fix to discrete
     def __isStable(self, th=None):
         if th is None:
             th = self.__th
@@ -377,9 +367,12 @@ class Model(object):
             #                structure or parameters values''')
             pass
 
-    def sim(self, u, t, th=None):
+    def sim(self, u, th=None):
         if th is None:
             th = self.__th
+
+        k = u.shape[1]
+        t = np.linspace(0, k-1, k)
 
         self.__validate(th)
         g = self.__sim_graph
@@ -396,7 +389,12 @@ class Model(object):
 
         return rez
 
-    def lik(self, t, u, y, th=None):
+    def lik(self, u, y, th=None):
+
+        # hack continuous to discrete system
+        k = u.shape[1]
+        t = np.linspace(0, k-1, k)
+
         if th is None:
             th = self.__th
 
@@ -406,6 +404,7 @@ class Model(object):
         # self.__validate(th)
         g = self.__lik_graph
 
+        # TODO: check for y also
         if t.shape[0] != u.shape[1]:
             raise Exception('''t.shape[0] != u.shape[1]''')
 
@@ -418,6 +417,7 @@ class Model(object):
             rez = sess.run(self.__lik_loop_op, {th_ph: th, t_ph: t, u_ph: u,
                                                 y_ph: y})
 
+        # FIXME: fix to discrete
         N = len(t)
         m = y.shape[0]
         S = rez[2]
@@ -425,15 +425,19 @@ class Model(object):
 
         return S
 
-    def __L(self, th, t, u, y):
-        return self.lik(t, u, y, th)
+    def __L(self, th, u, y):
+        return self.lik(u, y, th)
 
-    def __dL(self, th, t, u, y):
-        return self.dL(t, u, y, th)
+    def __dL(self, th, u, y):
+        return self.dL(u, y, th)
 
-    def dL(self, t, u, y, th=None):
+    def dL(self, u, y, th=None):
         if th is None:
             th = self.__th
+
+        # hack continuous to discrete system
+        k = u.shape[1]
+        t = np.linspace(0, k-1, k)
 
         # to 1D numpy array
         th = np.array(th).squeeze()
@@ -454,16 +458,16 @@ class Model(object):
 
         return rez[0]
 
-    def mle_fit(self, th, t, u, y):
+    def mle_fit(self, th, u, y):
         # TODO: call slsqp
         th0 = th
-        th = scipy.optimize.minimize(self.__L, th0, args=(t, u, y),
+        th = scipy.optimize.minimize(self.__L, th0, args=(u, y),
                                      jac=self.__dL, options={'disp': True})
         return th
 
 # model
-F = lambda th: [[-th[0], 0.],
-                [0., -th[1]]]
+F = lambda th: [[th[0], 0.],
+                [0., th[1]]]
 
 C = lambda th: [[1.0, 0.],
                 [0., 1.0]]
@@ -482,21 +486,20 @@ x0_c = lambda th: [[1e-3, 0.],
 w_c = x0_c
 v_c = x0_c
 
-th = [1.0, 1.0]
+th = [0.5, 0.5]
 
 # TODO: check if there are extra components in 'th'
 # TODO: measure model creation time
 m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th)
 
-t = np.linspace(0, 10, 100)
 u = np.ones([2, 100])
 u = u * 10
 
 # run simulation
-rez = m.sim(u, t)
+rez = m.sim(u)
 y = rez[1]
-L = m.lik(t, u, y)
-dL = m.dL(t, u, y)
+L = m.lik(u, y)
+dL = m.dL(u, y)
 th0 = [0.9, 0.9]
-print('identificating')
+# print('identificating')
 # th_e = m.mle_fit(th0, t, u, y)
