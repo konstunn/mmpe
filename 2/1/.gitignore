@@ -5,3 +5,9 @@
 *.exrc
 *.pyc
 *.out
+*.aux
+*.log
+*.pdf
+*.dvi
+*.pytxcode
+pythontex-files-main/

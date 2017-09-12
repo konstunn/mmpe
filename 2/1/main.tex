@@ -1,4 +1,217 @@
 
+\documentclass[a4paper,14pt]{extarticle}
+
+\usepackage{cmap}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage[russian]{babel}
+
+\usepackage[a4paper,margin=1.5cm,footskip=1cm,left=2cm,right=1.5cm,top=1.5cm
+	,bottom=2.0cm]{geometry}
+\usepackage{textcase}
+\usepackage{csquotes}
+\usepackage{enumitem}
+
+\usepackage[labelsep=period,justification=centering]{caption}
+
+\usepackage{amsmath}
+\usepackage{pgfplots}
+
+\usepackage{float}
+
+\usepackage{indentfirst}
+
+\usepackage{textgreek}
+
+\usepackage{pythontex}
+
+% 
+\setlist[description]{leftmargin=\parindent,labelindent=\parindent}
+
+\renewcommand{\baselinestretch}{1.5}
+
+\usepackage[titletoc,title]{appendix}
+
+\begin{document}
+
+\setcounter{secnumdepth}{0}
+
+\begin{titlepage}
+
+	\begin{center}
+		Новосибирский государственный технический университет
+		
+		Факультет прикладной математики и информатики
+		
+		Кафедра теоретической и прикладной информатики
+		
+		\vspace{250pt}
+		
+		\textbf{\LARGE{Лабораторная работа № 1}}
+		\medbreak
+		\small{по дисциплине \\
+		\medbreak
+		<<Математические методы планирования эксперимента>>}
+		\vspace{100pt}
+	\end{center}
+
+	\begin{flushleft}
+		\begin{tabbing}
+			Группа:\qquad\qquad \= ПММ-61\\
+			Студент:            \> Горбунов К. К.\\
+			Преподаватель:      \> Чубич В. М.\\
+		\end{tabbing}
+	\end{flushleft}
+
+	\begin{center}
+		\vspace{\fill}
+		Новосибирск, 2017 г.
+	\end{center}
+
+\end{titlepage}
+
+\newpage
+
+\section{Цель работы}
+
+Ознакомиться с алгоритмами оценивания неизвестных параметров моделей
+стохастических линейных дискретных систем.
+
+\section{Порядок выполнения лабораторной работы}
+
+\begin{enumerate}
+\item Изучить соответствующий материал лекции на тему <<Оценивание
+	неизвестных параметров дискретных моделей>>
+
+\item Последовательно выполнить все задания к лабораторной работе
+
+\item Проверить правильность реализации алгоритмов и работоспособность
+	программ не менее чем на пяти тестах
+
+\item Оформить отчет по лабораторной работе
+\end{enumerate}
+
+\section{Задание к лабораторной работе}
+
+\begin{enumerate}
+
+\item Реализовать вычисление значения критерия максимального
+	\mbox{правдоподобия}
+
+\item Проверить правильность исполнения программы на примерах
+
+\item Для стохастических линейных дискретных моделей при различных
+	вариантах вхождения неизвестных параметров в уравнения состояния и измерения
+	получить оценки параметров
+
+\end{enumerate}
+
+\newpage
+
+\section{Теоретический материал}
+
+\subsection{Описание модельной структуры}
+
+описание модели
+
+\subsection{Критерий идентификации}
+
+выражение
+
+алгоритм
+
+\subsection{Градиент критерия}
+
+выражение
+
+алгоритм
+
+\section{Ход работы}
+
+\subsection{Примеры решений}
+
+отличаются вхождением параметров в Q, R, C, F, H
+
+построить поверхность отражающую зависимость критерия от тета
+
+выводы к каждому примеру
+
+здесь начинается первый кусок кода
+
+\renewcommand{\baselinestretch}{1}
+\begin{pyconsole}
+from model.model import *
+
+F = lambda th: [[th[0], 0.],
+                [0., th[1]]]
+
+C = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+G = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+H = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+x0_m = lambda th: [[0.],
+                   [0.]]
+
+x0_c = lambda th: [[1e-3, 0.],
+                   [0., 1e-3]]
+w_c = x0_c
+v_c = x0_c
+
+th = [0.5, 0.5]
+
+m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th)
+\end{pyconsole}
+\renewcommand{\baselinestretch}{1.5}
+
+\newpage
+
+здесь начинается второй кусок кода
+\begin{pyconsole}
+u = np.ones([2, 100])
+u = u * 10
+
+# run simulation
+rez = m.sim(u)
+y = rez[1]
+L = m.lik(u, y)
+print(L)
+dL = m.dL(u, y)
+print(dL)
+th0 = [0.3, 0.8]
+# print('identificating')
+th_e = m.mle_fit(th0, u, y) 
+print(th_e)
+\end{pyconsole}
+
+\newpage
+
+\begin{thebibliography}{9}
+
+\begin{sloppypar}
+
+\bibitem{mono} Активная параметрическая идентификация стохастических линейных
+	систем: монография / В.И. Денисов, В.М. Чубич, О.С. Черникова, Д.И. Бобылева.
+		--- Новосибирск : Изд-во НГТУ, 2009. --- 192 с.
+		(Серия <<Монографии НГТУ>>).
+
+\end{sloppypar}
+
+\end{thebibliography}
+
+\renewcommand{\baselinestretch}{1}
+
+\begin{appendices}
+
+\section{Исходные тексты}
+
+\begin{pyverbatim}[][fontsize=\small]
+
 import math
 import tensorflow as tf
 import control
@@ -464,3 +677,10 @@ class Model(object):
         th = scipy.optimize.minimize(self.__L, th0, args=(u, y),
                                      jac=self.__dL, options={'disp': True})
         return th
+\end{pyverbatim}
+
+\end{appendices}
+
+\end{document}
+
+# vim: ts=2 sw=2
