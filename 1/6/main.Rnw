@@ -813,7 +813,7 @@ lsd$criterion
 
 clean(lsd)
 
-lsd <- directproc(model, l, F)
+lsd <- directproc(model, l, use.grad=FALSE)
 lsd$U
 lsd$p
 lsd$criterion
