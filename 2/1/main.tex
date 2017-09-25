@@ -33,6 +33,8 @@
 
 \usepackage[titletoc,title]{appendix}
 
+\DeclareMathOperator{\Sp}{Sp}
+
 \begin{document}
 
 \setcounter{secnumdepth}{0}
@@ -113,10 +115,10 @@
 
 \subsection{Описание модельной структуры}
 
-\renewcommand{\vec}[1]{\mathbf{#1}}
+\renewcommand{\vec}[1]{#1}
 
 Модель стохастической динамической линейной дискретной системы в простанстве
-состояний в виде:
+состояний в виде \cite{mono}:
 \begin{equation}
 	\label{eq:initmod}
 	\left\{ 
@@ -168,7 +170,7 @@ E[\vec{v}(t_k)\vec{w}^{T}(t_k)] = 0,
 параметрами $\overline{\vec{x}}(0)$ и $P(0)$ и не коррелирует с $\vec{w(t_k)}$
 и $\vec{v_{k+1}}$ при любых значениях $k$.
 
-Будем считать, что подлежащие оцениванию параметры $\Theta = (\theta_1,
+Будем считать, что подлежащие оцениванию параметры $\theta = (\theta_1,
 \theta_2, \ldots, \theta_s)$ могут входить в элементы матриц $F, C, G, H, Q, R,
 P(0)$ и в вектор $\overline{\vec{x}}(0)$ в различных комбинациях.
 
@@ -179,26 +181,195 @@ P(0)$ и в вектор $\overline{\vec{x}}(0)$ в различных комб�
 \newcommand{\eps}{\varepsilon}
 
 В качестве критерия идентификации используется логарифмическая функция
-правдоподобия. Она имеет вид:
+правдоподобия. Она имеет вид \cite{mono}:
 \begin{equation*}
 \begin{split}
-	\chi(\Theta) = -\ln{L(\Theta)} = \frac{Nm}{2}\ ln{2\pi} + \frac{1}{2}
+	\chi(\theta) = -\ln{L(\theta)} = \frac{Nm}{2}\ ln{2\pi} + \frac{1}{2}
 	\sum\limits_{k=0}^{N-1} \left[ \eps^T(t_{k+1}) B^{-1}(t_{k+1}) \eps(t_{k+1}) \right]
 	+ \\ + \frac{1}{2} \sum\limits_{k=0}^{N-1} \ln \det B^{-1}(t_{k+1}).
 \end{split}
 \end{equation*}
 
-Алгоритм вычисления критерия следующий:
+Алгоритм вычисления критерия следующий \cite{mono}:
 
 \begin{enumerate}
-\item item
+\item для заданного $\theta$  найдем $F, C, G, Q, R, \overline{\vec{x}}(0),
+P(0)$.
+\item положим $k = 0$, $\chi(\theta) = \frac{Nm}{2} \ln{2\pi}$, $\Delta_2 = 0$,
+$P(0|0) = P(0)$.
+\item Используя выражения фильтра Калмана, вычислим:
+\[
+	P(t_{k+1}|t_k) = F P(t_k|t_k) F^T + GQG^T;
+\]
+\[
+	B(t_{k+1}) = H P(t_{k+1}|t_k) H^T + R;
+\]
+\[
+	K(t_{k+1}) = P(t_{k+1}|t_k) H^T B^{-1}(t_{k+1});
+\]
+\[
+	P(t_{k+1}|t_{k+1}) = \left[ I - K(t_{k+1}) H \right] P(t_{k+1}|t_k).
+\]
+\item Вычислим $\Delta_2 = \Delta_2 + \frac{1}{2} \ln \det B(t_{k+1})$.
+\item Увеличим $k$ на единицу. Если $k \le N-1$, перейдем на шаг 3. В противном
+случае --- на шаг 6.
+\item Положим $k = 0$.
+\item Используя выражения фильтра Калмана, найдем:
+\[
+	\hat{x}(t_{k+1}|t_k) = F \hat{x}(t_k|t_k) + C u(t_k);
+\]
+\[
+	\eps(t_{k+1}) = y(t_{k+1}) - H \hat{x} (t_{k+1}|t_k);
+	\hat{x}(t_{k+1}|t_{k+1}) = \hat{x}(t_{k+1}|t_k) + K(t_{k+1}) \eps(t_{k+1}).
+\]
+\item Найдем значение приращения логарифмической функции правдоподобия
+$\Delta_1$, соответствующее текущему значению времени:
+\[
+	\Delta_1 = \frac{1}{2} \left[ \eps(t_{k+1}) \right]^T B^{-1}(t_{k+1}) 
+	\left[ \eps(t_{k+1}) \right].
+\]
+\item Положим $\chi(\theta) = \chi(\theta) + \Delta_1$.
+\item Увеличим $k$ на единицу. Если $k \le N-1$, перейдем на шаг 7.
+В противном случае --- на шаг 11.
+\item Положим $\chi(\theta) = \chi(\theta) + \Delta_2$ и закончим процесс.
 \end{enumerate}
 
-\subsection{Градиент критерия}
+\subsection{Градиент критерия идентификации}
 
-выражение
+Выражение для градиента критерия имеет вид \cite{mono}:
+\begin{equation*}
+\begin{split}
+	\frac{\partial \chi(\theta)}{\partial \theta_k} = \sum\limits_{k=0}^{N-1}
+	\left[ \frac{\partial \eps(t_{k+1})}{\partial \theta_k} \right]^T
+	B^{-1}(t_{k+1}) \left[ \eps(t_{k+1}) \right] - \\
+	- \frac{1}{2}
+	\sum\limits_{k=0}^{N-1} \left[ \eps(t_{k+1}) \right]^T B^{-1}(t_{k+1})
+	\frac{\partial B(t_{k+1})}{\partial \theta_k} B^{-1}(t_{k+1}) \eps(t_{k+1}) +
+	\\ + 
+	\frac{1}{2} \sum\limits_{k=0}^{N-1} \Sp \left[ B^{-1}(t_{k+1})
+	\frac{\partial B(t_{k+1})}{\partial \theta_k} \right]. 
+\end{split}
+\end{equation*}
 
-алгоритм
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+
+Алгоритм вычисления градиента критерия следующий \cite{mono}:
+\begin{enumerate}
+\item Для заданного $\theta$ найдем: $F, \pd{F}{\theta_k}, Q, \pd{Q}{\theta_k},
+C, \pd{C}{\theta_k}, R, \pd{R}{\theta_k}, G, \pd{G}{\theta_k}, \overline{x}(0),
+\pd{\overline{x}(0)}{\theta_k}, H, \pd{H}{\theta_k}$, $P(0),
+\pd{P(0)}{\theta_k}$, $k = 1, 2, \ldots, s$. 
+
+\item Положим $k = 0$; $\pd{\chi(\theta)}{\theta_k} = 0$; $P(0|0) = P(0)$;
+$\pd{P(0|0)}{\theta_k} = \pd{P(0)}{\theta_k}$, $k = 1, 2, \ldots, s$;
+$\Delta_2'$ = 0.
+
+\item Используем выражения фильтра Калмана, вычислим:
+\[
+	P(t_{k+1}|t_k) = F P(t_k|t_k) F^T + GQG^T;
+\]
+\[
+	B(t_{k+1}) = H P(t_{k+1}|t_k) H^T + R;
+\]
+\[
+	K(t_{k+1}) = P(t_{k+1}|t_k) H^T B^{-1}(t_{k+1});
+\]
+\[
+	P(t_{k+1}|t_{k+1}) = \left[ I - K(t_{k+1}) H \right] P(t_{k+1}|t_k)
+\]
+\item Найдем $\pd{P(t_{k+1}|t_k)}{\theta_k}$, $\pd{B(t_{k+1})}{\theta_k}$,
+$\pd{K(t_{k+1})}{\theta_k}$, $\pd{P(t_{k+1}|t_{k+1})}{\theta_k}$ для всех
+$k = 1, 2, \ldots, s$ по формулам, вытекающим из уравнений фильтра Калмана:
+\begin{equation*}
+\begin{split}
+	\pd{P(t_{k+1}|t_k)}{\theta_k} = \pd{F}{\theta_k} P(t_k|t_k) F^T + F
+	\pd{P(t_k|t_k)}{\theta_k} F^T + F P(t_k|t_k) \pd{F^T}{\theta_k} + \\ +
+	\pd{G}{\theta_k} Q G^T + G \pd{Q}{\theta_k} G^T + G Q \pd{G^T}{\theta_k};
+\end{split}
+\end{equation*}
+
+
+\newcommand{\pdpk}[1]{\pd{#1}{\theta_i}}
+\newcommand{\pred}[0]{t_{k+1}|t_k}
+\newcommand{\est}[0]{t_k|t_k}
+\newcommand{\fut}[0]{t_{k+1}}
+\newcommand{\estfut}[0]{t_{k+1}|t_{k+1}}
+
+\[
+	\pdpk{B(t_{k+1})} = \pdpk{H} P(t_{k+1}|t_k) H^T + H \pdpk{P(\pred)} H^T +
+	H P(\pred) \pdpk{H^T} + \pdpk{R}; 
+\]
+
+\newcommand{\inv}[1]{#1^{-1}}
+
+\begin{equation*}
+\begin{split}
+	\pdpk{K(\fut)} = \left[ \pdpk{P(\pred)} H^T + P(\pred) \pdpk{H^T} - \right.
+	\\ \left. -
+	P(\pred) H^T \inv{B}(\fut) \pdpk{B(\fut)} \right] \inv{B}(\fut); \end{split}
+\end{equation*}
+
+\begin{equation*}
+\begin{split}
+	\pdpk{P(\estfut)} = \left[ I - K(\fut) H \right] \pdpk{P(\pred)} - \\ -
+	\left[ \pdpk{K(\fut)} H + K(\fut) \pdpk{H} \right] P(\pred).
+\end{split}
+\end{equation*}
+
+\item Вычислим $\Delta_2' = \Delta_2' + \frac{1}{2} \Sp \left[ \inv{B}(\fut)
+\pdpk{B(\fut)} \right].$
+
+\item Увеличим $k$ на единицу. Если $k \le N-1$, перейдем на шаг 3. В противном
+случае --- на шаг 7.
+
+\item Положим $k = 0$.
+
+\item Используя выражения фильтра Калмана, найдем:
+\[
+	\hat{x}(\pred) = F \hat{x}(\est) + C u(t_k);
+\]
+\[
+	\eps(\fut) = y(\fut) - H \hat{x}(\pred);
+\]
+\[
+	\hat{x}(\estfut) = \hat{x}(\pred) + K(\fut) \eps(\fut).
+\]
+
+\item Найдем $\pdpk{\hat{x}(\pred)},\ \pdpk{\eps(\fut)},\
+\pdpk{\hat{x}(\estfut)}$ для всех $k = 1, 2, \ldots, s$ по формулам, вытакающим
+из уравнений фильтра Калмана:
+\[
+	\pdpk{\hat{x}(\pred)} = \pdpk{F} \hat{x}(\est) + F \pdpk{\hat{x}(\est)} +
+	\pdpk{C} u(t_k);
+\]
+\[
+	\pdpk{\eps(\fut)} = -\pdpk{H} \hat{x}(\pred) - H \pdpk{\hat{x}(\pred)};
+\]
+\[
+	\pdpk{\hat{x}(\estfut)} = \pdpk{\hat{x}(\pred)} + \pdpk{K(\fut)} \eps(\fut) +
+	K(\fut) \pdpk{\eps(\fut)}.
+\]
+
+\item Найдем значение приращения градиента $\Delta_1'$, соответствующее
+текущему значению времени:
+\begin{equation*}
+\begin{split}
+	\Delta_1' = \left[ \pdpk{\eps(\fut)} \right]^T \inv{B}(\fut)
+	\left[ \eps(\fut) \right] - \\ - \frac{1}{2} \left[ \eps(\fut) \right]^T
+	\inv{B}(\fut) \pdpk{B(\fut)} \inv{B}(\fut) \eps(\fut).
+\end{split}
+\end{equation*}
+
+\item Положим $\pdpk{\chi(\theta)} = \pdpk{\chi(\theta)} + \Delta_1'$,
+$k = 1, 2, \ldots, s$.
+
+\item Увеличим $k$ на единицу. Если $k \le N-1$, перейдем на шаг 8.
+В противном случае --- на шаг 13.
+
+\item Положим $\pdpk{\chi(\theta)} = \pdpk{\chi(\theta)} + \Delta_2'$,
+$k = 1, 2, \ldots, s$ и закончим процесс.
+
+\end{enumerate}
 
 \section{Ход работы}
 
