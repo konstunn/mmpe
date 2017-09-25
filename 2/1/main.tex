@@ -239,15 +239,15 @@ $\Delta_1$, соответствующее текущему значению в�
 Выражение для градиента критерия имеет вид \cite{mono}:
 \begin{equation*}
 \begin{split}
-	\frac{\partial \chi(\theta)}{\partial \theta_k} = \sum\limits_{k=0}^{N-1}
-	\left[ \frac{\partial \eps(t_{k+1})}{\partial \theta_k} \right]^T
+	\frac{\partial \chi(\theta)}{\partial \theta_i} = \sum\limits_{k=0}^{N-1}
+	\left[ \frac{\partial \eps(t_{k+1})}{\partial \theta_i} \right]^T
 	B^{-1}(t_{k+1}) \left[ \eps(t_{k+1}) \right] - \\
 	- \frac{1}{2}
 	\sum\limits_{k=0}^{N-1} \left[ \eps(t_{k+1}) \right]^T B^{-1}(t_{k+1})
-	\frac{\partial B(t_{k+1})}{\partial \theta_k} B^{-1}(t_{k+1}) \eps(t_{k+1}) +
+	\frac{\partial B(t_{k+1})}{\partial \theta_i} B^{-1}(t_{k+1}) \eps(t_{k+1}) +
 	\\ + 
 	\frac{1}{2} \sum\limits_{k=0}^{N-1} \Sp \left[ B^{-1}(t_{k+1})
-	\frac{\partial B(t_{k+1})}{\partial \theta_k} \right]. 
+	\frac{\partial B(t_{k+1})}{\partial \theta_i} \right]. 
 \end{split}
 \end{equation*}
 
@@ -255,13 +255,13 @@ $\Delta_1$, соответствующее текущему значению в�
 
 Алгоритм вычисления градиента критерия следующий \cite{mono}:
 \begin{enumerate}
-\item Для заданного $\theta$ найдем: $F, \pd{F}{\theta_k}, Q, \pd{Q}{\theta_k},
-C, \pd{C}{\theta_k}, R, \pd{R}{\theta_k}, G, \pd{G}{\theta_k}, \overline{x}(0),
-\pd{\overline{x}(0)}{\theta_k}, H, \pd{H}{\theta_k}$, $P(0),
-\pd{P(0)}{\theta_k}$, $k = 1, 2, \ldots, s$. 
+\item Для заданного $\theta$ найдем: $F, \pd{F}{\theta_i}, Q, \pd{Q}{\theta_i},
+C, \pd{C}{\theta_i}, R, \pd{R}{\theta_i}, G, \pd{G}{\theta_i}, \overline{x}(0),
+\pd{\overline{x}(0)}{\theta_i}, H, \pd{H}{\theta_i}$, $P(0),
+\pd{P(0)}{\theta_i}$, $i = 1, 2, \ldots, s$. 
 
-\item Положим $k = 0$; $\pd{\chi(\theta)}{\theta_k} = 0$; $P(0|0) = P(0)$;
-$\pd{P(0|0)}{\theta_k} = \pd{P(0)}{\theta_k}$, $k = 1, 2, \ldots, s$;
+\item Положим $k = 0$; $\pd{\chi(\theta)}{\theta_i} = 0$; $P(0|0) = P(0)$;
+$\pd{P(0|0)}{\theta_i} = \pd{P(0)}{\theta_i}$, $i = 1, 2, \ldots, s$;
 $\Delta_2'$ = 0.
 
 \item Используем выражения фильтра Калмана, вычислим:
@@ -277,14 +277,14 @@ $\Delta_2'$ = 0.
 \[
 	P(t_{k+1}|t_{k+1}) = \left[ I - K(t_{k+1}) H \right] P(t_{k+1}|t_k)
 \]
-\item Найдем $\pd{P(t_{k+1}|t_k)}{\theta_k}$, $\pd{B(t_{k+1})}{\theta_k}$,
-$\pd{K(t_{k+1})}{\theta_k}$, $\pd{P(t_{k+1}|t_{k+1})}{\theta_k}$ для всех
-$k = 1, 2, \ldots, s$ по формулам, вытекающим из уравнений фильтра Калмана:
+\item Найдем $\pd{P(t_{k+1}|t_k)}{\theta_i}$, $\pd{B(t_{k+1})}{\theta_i}$,
+$\pd{K(t_{k+1})}{\theta_i}$, $\pd{P(t_{k+1}|t_{k+1})}{\theta_i}$ для всех
+$i = 1, 2, \ldots, s$ по формулам, вытекающим из уравнений фильтра Калмана:
 \begin{equation*}
 \begin{split}
-	\pd{P(t_{k+1}|t_k)}{\theta_k} = \pd{F}{\theta_k} P(t_k|t_k) F^T + F
-	\pd{P(t_k|t_k)}{\theta_k} F^T + F P(t_k|t_k) \pd{F^T}{\theta_k} + \\ +
-	\pd{G}{\theta_k} Q G^T + G \pd{Q}{\theta_k} G^T + G Q \pd{G^T}{\theta_k};
+	\pd{P(t_{k+1}|t_k)}{\theta_i} = \pd{F}{\theta_i} P(t_k|t_k) F^T + F
+	\pd{P(t_k|t_k)}{\theta_i} F^T + F P(t_k|t_k) \pd{F^T}{\theta_i} + \\ +
+	\pd{G}{\theta_i} Q G^T + G \pd{Q}{\theta_i} G^T + G Q \pd{G^T}{\theta_i};
 \end{split}
 \end{equation*}
 
@@ -336,7 +336,7 @@ $k = 1, 2, \ldots, s$ по формулам, вытекающим из урав�
 \]
 
 \item Найдем $\pdpk{\hat{x}(\pred)},\ \pdpk{\eps(\fut)},\
-\pdpk{\hat{x}(\estfut)}$ для всех $k = 1, 2, \ldots, s$ по формулам, вытакающим
+\pdpk{\hat{x}(\estfut)}$ для всех $i = 1, 2, \ldots, s$ по формулам, вытакающим
 из уравнений фильтра Калмана:
 \[
 	\pdpk{\hat{x}(\pred)} = \pdpk{F} \hat{x}(\est) + F \pdpk{\hat{x}(\est)} +
@@ -361,13 +361,13 @@ $k = 1, 2, \ldots, s$ по формулам, вытекающим из урав�
 \end{equation*}
 
 \item Положим $\pdpk{\chi(\theta)} = \pdpk{\chi(\theta)} + \Delta_1'$,
-$k = 1, 2, \ldots, s$.
+$i = 1, 2, \ldots, s$.
 
 \item Увеличим $k$ на единицу. Если $k \le N-1$, перейдем на шаг 8.
 В противном случае --- на шаг 13.
 
 \item Положим $\pdpk{\chi(\theta)} = \pdpk{\chi(\theta)} + \Delta_2'$,
-$k = 1, 2, \ldots, s$ и закончим процесс.
+$i = 1, 2, \ldots, s$ и закончим процесс.
 
 \end{enumerate}
 
