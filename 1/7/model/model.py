@@ -321,10 +321,45 @@ class Model(object):
             self.__lik_loop_op = lik_loop
             self.__dS = dS
 
-    def __define_fisher_matrix_computation(self):
-        pass
+    def __define_fisher_information_matrix_computation(self):
+        self.__fim_graph = tf.Graph()
+        fim_graph = self.__fim_graph
 
-    def __fisher_matrix(self, th):
+        r = self.__r
+        m = self.__m
+        n = self.__n
+        p = self.__p
+
+        with fim_graph.as_default():
+            th = tf.placeholder(tf.float64, shape=[None], name='th')
+            u = tf.placeholder(tf.float64, shape=[r, None], name='u')
+            y = tf.placeholder(tf.float64, shape=[m, None], name='y')
+
+            F = tf.convert_to_tensor(self.__F(th), tf.float64)
+            F.set_shape([n, r])
+
+            C = tf.convert_to_tensor(self.__C(th), tf.float64)
+            C.set_shape([n, r])
+
+            G = tf.convert_to_tensor(self.__C(th), tf.float64)
+            G.set_shape([n, p])
+
+            H = tf.convert_to_tensor(self.__H(th), tf.float64)
+            H.set_shape([m, n])
+
+            x0_mean = tf.convert_to_tensor(self.__x0_mean(th), tf.float64)
+            x0_mean.set_shape([n, 1])
+
+            P_0 = tf.convert_to_tensor(self.__x0_cov(th), tf.float64)
+            P_0.set_shape([n, n])
+
+            Q = tf.convert_to_tensor(self.__w_cov(th), tf.float64)
+            Q.set_shape([p, p])
+
+            R = tf.convert_to_tensor(self._v_cov(th), tf.float64)
+            R.set_shape([m, m])
+
+    def __fisher_information_matrix(self, th):
         pass
 
     def __isObservable(self, th=None):
