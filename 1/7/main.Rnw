@@ -637,127 +637,127 @@ M <- function(u, model, th)
 }
 @
 
-<<gradM, purl=T>>=
+<<gradM, purl=T, size='small'>>=
 # arguments are functions except for 'th' and 'u'
 dM <- function(u, model, th)
 {
-	# 1
-	dPhi <- matderiv(model$Phi, th)
-	dPsi <- matderiv(model$Psi, th)
-	dH <-	matderiv(model$H, th)
-	dX_0 <- matderiv(model$X_0, th)
+  # 1
+  dPhi <- matderiv(model$Phi, th)
+  dPsi <- matderiv(model$Psi, th)
+  dH <- matderiv(model$H, th)
+  dX_0 <- matderiv(model$X_0, th)
 
-	Phi <- model$Phi(th)
-	Psi <- model$Psi(th)
-	Gam <- model$Gam(th)
-	H <- model$H(th)
-	Q <- model$Q(th)
-	R <- model$R(th)
-	X_0 <- model$X_0(th)
-	P0 <- model$P0(th)
+  Phi <- model$Phi(th)
+  Psi <- model$Psi(th)
+  Gam <- model$Gam(th)
+  H <- model$H(th)
+  Q <- model$Q(th)
+  R <- model$R(th)
+  X_0 <- model$X_0(th)
+  P0 <- model$P0(th)
 
-	Phi_A <- rbind(Phi, Reduce(rbind, dPhi))
-	PsiA <- rbind(Psi, Reduce(rbind, dPsi))
+  Phi_A <- rbind(Phi, Reduce(rbind, dPhi))
+  PsiA <- rbind(Psi, Reduce(rbind, dPsi))
 
-	# 2
-	r <- ncol(Psi)
-	s <- length(th)
-	if (is.vector(u))
-		u <- t(u)
-	N <- ncol(u)
-	Pe <- P0
-	n <- nrow(Phi)
-	dMth <- array(0, c(r, N, s, s))
+  # 2
+  r <- ncol(Psi)
+  s <- length(th)
+  if (is.vector(u))
+    u <- t(u)
+  N <- ncol(u)
+  Pe <- P0
+  n <- nrow(Phi)
+  dMth <- array(0, c(r, N, s, s))
 
-	dX_Ap <- array(0, c(r, N, (s+1)*n))
+  dX_Ap <- array(0, c(r, N, (s+1)*n))
 
-	for (t in 0:(N-1)) {
-		# 3
-		if (t == 0)
-		{
-			for (j in 1:r) {
-				for (tau in 0:(N-1)) {
-					if (tau != 0)
-						dX_Ap[j,tau+1,] <- rep(0, (s+1)*n)
-					else
-						dX_Ap[j,tau+1,] <- PsiA[,j]
-				}
-			}
-			Phi_dX_0 <- lapply(dX_0, function(dX_0_i) Phi %*% dX_0_i)
-			Phi_dX_0 <- Reduce(rbind, Phi_dX_0)
-			O <- matrix(0, n, n)
-			O_Phi_dX_0 <- rbind(O, Phi_dX_0)
+  for (t in 0:(N-1)) {
+    # 3
+    if (t == 0)
+    {
+      for (j in 1:r) {
+        for (tau in 0:(N-1)) {
+          if (tau != 0)
+            dX_Ap[j,tau+1,] <- rep(0, (s+1)*n)
+          else
+            dX_Ap[j,tau+1,] <- PsiA[,j]
+        }
+      }
+      Phi_dX_0 <- lapply(dX_0, function(dX_0_i) Phi %*% dX_0_i)
+      Phi_dX_0 <- Reduce(rbind, Phi_dX_0)
+      O <- matrix(0, n, n)
+      O_Phi_dX_0 <- rbind(O, Phi_dX_0)
 
-			X_Ap <- Phi_A %*% X_0 + O_Phi_dX_0 + PsiA %*% u[,t+1]
-		}
-		else
-		{
-			for (j in 1:r) {
-				for (tau in 0:(N-1))
-				{
-					du <- rep(0, r)
+      X_Ap <- Phi_A %*% X_0 + O_Phi_dX_0 + PsiA %*% u[,t+1]
+    }
+    else
+    {
+      for (j in 1:r) {
+        for (tau in 0:(N-1))
+        {
+          du <- rep(0, r)
 
-					if (t == tau)
-						du[j] <- 1
+          if (t == tau)
+            du[j] <- 1
 
-					dX_Ap[j,tau+1,] <- as.numeric(PhiA %*% dX_Ap[j,tau+1,] + PsiA %*% du)
-				}
-			}
-			X_Ap <- PhiA %*% X_Ap + PsiA %*% u[,t+1]
-		}
+          dX_Ap[j,tau+1,] <- as.numeric(PhiA %*% dX_Ap[j,tau+1,] + PsiA %*% du)
+        }
+      }
+      X_Ap <- PhiA %*% X_Ap + PsiA %*% u[,t+1]
+    }
 
-		# 4
-		Pp <- Phi %*% Pe %*% t(Phi) + Gam %*% Q %*% t(Gam)
-		B <- H %*% Pp %*% t(H) + R
-		invB <- solve(B)
-		K <- Pp %*% t(H) %*% invB
-		I <- diag(n)
-		Pu <- (I - K %*% H) %*% Pp
-		K_p <- Phi %*% K
+    # 4
+    Pp <- Phi %*% Pe %*% t(Phi) + Gam %*% Q %*% t(Gam)
+    B <- H %*% Pp %*% t(H) + R
+    invB <- solve(B)
+    K <- Pp %*% t(H) %*% invB
+    I <- diag(n)
+    Pu <- (I - K %*% H) %*% Pp
+    K_p <- Phi %*% K
 
-		# 5
-		PhiA <- PhiA(Phi, K_p, dPhi, H, dH)
+    # 5
+    PhiA <- PhiA(Phi, K_p, dPhi, H, dH)
 
-		C0 <- C(0, n, s)
+    C0 <- C(0, n, s)
 
-		# 6
-		O <- array(0, c(r, N, s, s))
-		AdM <- array(0, c(r, N, s, s))
+    # 6
+    O <- array(0, c(r, N, s, s))
+    AdM <- array(0, c(r, N, s, s))
 
-		for (j in 1:r) {
-			for (tau in 0:(N-1)) {
-				O <- matrix(0, s, s)
-				I <- II <- III <- IV <- O
-				for (a in 1:s) {
-					Ca <- C(a,n,s)
-					for (b in 1:s) {
-						Cb <- C(b,n,s)
-						dX_Ap_ <- dX_Ap[j,tau+1,]
+    for (j in 1:r) {
+      for (tau in 0:(N-1)) {
+        O <- matrix(0, s, s)
+        I <- II <- III <- IV <- O
+        for (a in 1:s) {
+          Ca <- C(a,n,s)
+          for (b in 1:s) {
+            Cb <- C(b,n,s)
+            dX_Ap_ <- dX_Ap[j,tau+1,]
 
-						X__dX_t__dX__X_t <- X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap)
+            X__dX_t__dX__X_t <- X_Ap %*% t(dX_Ap_) + dX_Ap_ %*% t(X_Ap)
 
-						I[a,b] <- Sp(C0 %*% X__dX_t__dX__X_t %*%
-												 t(C0) %*% t(dH[[b]]) %*% invB %*% dH[[a]])
+            I[a,b] <- Sp(C0 %*% X__dX_t__dX__X_t %*%
+                         t(C0) %*% t(dH[[b]]) %*% invB %*% dH[[a]])
 
-						II[a,b] <- Sp(C0 %*% X__dX_t__dX__X_t %*%
-													t(Cb) %*% t(H) %*% invB %*% dH[[a]])
+            II[a,b] <- Sp(C0 %*% X__dX_t__dX__X_t %*%
+                          t(Cb) %*% t(H) %*% invB %*% dH[[a]])
 
-						III[a,b] <- Sp(Ca %*% X__dX_t__dX__X_t
-													%*% t(C0) %*% dH[[b]] %*% invB %*% H)
+            III[a,b] <- Sp(Ca %*% X__dX_t__dX__X_t
+                          %*% t(C0) %*% dH[[b]] %*% invB %*% H)
 
-						IV[a,b] <- Sp(Ca %*% X__dX_t__dX__X_t %*%
-													t(Cb) %*% t(H) %*% invB %*% H)
-					}
-				}
-				# put in dM
-				AdM[j,tau+1,,] <- I + II + III + IV
-			}
-		}
-		dMth <- dMth + AdM
-		Pe <- Pu
-	}
-	dimnames(dMth) <- NULL
-	return(dMth)
+            IV[a,b] <- Sp(Ca %*% X__dX_t__dX__X_t %*%
+                          t(Cb) %*% t(H) %*% invB %*% H)
+          }
+        }
+        # put in dM
+        AdM[j,tau+1,,] <- I + II + III + IV
+      }
+    }
+    dMth <- dMth + AdM
+    Pe <- Pu
+  }
+  dimnames(dMth) <- NULL
+  return(dMth)
 }
 @
 
