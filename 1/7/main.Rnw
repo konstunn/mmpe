@@ -108,8 +108,7 @@ library(Matrix)
 <<functions, purl=T>>=
 s2q <- function(s) s * (s + 1) / 2 + 1
 
-# FIXME: take case r > 1 into account
-randPlan <- function(model, N, th=NULL)
+randPlan <- function(model, N=NULL, u=NULL, th=NULL)
 {
 	s <- model$s
 	q <- s2q(s)
