@@ -118,21 +118,34 @@ randPlan <- function(model, N=NULL, u=NULL, th=NULL)
 	if (is.null(th))
 		th <- runif(s, min=-1, max=1)
 
+  r <- ncol(model$X_0(th))
+
+  if (is.null(u)) {
+    if (is.null(N))
+      stop('u is null and N is null')
+    u <- runif(r*N, min=-1, max=1)
+    u <- matrix(u, nrow=r, ncol=N)
+  }
+
 	repeat {
-		u <- runif(N*q, min=-1, max=1)
+		x <- runif(q*r, min=-1, max=1)
 
-		U <- matrix(u, nrow=q, ncol=N)
+		X <- matrix(x, nrow=q, ncol=r)
 
-		xi <- c(U, p)
+		# NOTE:
+		xi <- c(X, p)
+
 		attr(xi, 's') <- s
 		attr(xi, 'q') <- q
-		criterion <- X(xi, model, th)
+
+		# FIXME: X
+		criterion <- X(xi, u, model, th)
 
 		# plan must be non-singular
 		if (!is.na(criterion))
 				break
 	}
-	return(list(th=th, U=U, p=p, criterion=criterion))
+	return(list(th=th, X=X, p=p, u=u, criterion=criterion))
 }
 
 # FIXME: take case r > 1 into account
