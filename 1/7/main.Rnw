@@ -149,21 +149,26 @@ randPlan <- function(model, N=NULL, u=NULL, th=NULL)
 }
 
 # FIXME: take case r > 1 into account
-Mxi <- function(model, xi, th)
+# normalized information matrix
+Mxi <- function(model, xi, u, th)
 {
 	s <- length(th)
 	q <- attr(xi, 'q')
-	if (is.null(q)) {
-		q <- s2q(s)
-	}
+  r <- ncol(model$X_0(th))
 
-	u <- head(xi, n=-q)
+	if (is.null(q))
+		q <- s2q(s)
+
+	# all except q last elements
+	x <- head(xi, n=-q)
+
+	# q last elements
 	p <- tail(xi, n=q)
 
-	U <- matrix(u, nrow=q)
+	X <- matrix(x, nrow=q)
 
 	# list of matrices for every point of the plan
-	Mi <- alply(U, 1, M, model=model, th=th)
+	Mi <- alply(X, 1, M, u=u, model=model, th=th) # FIXME: M()
 
 	# multiply by weights 'p'
 	Mi <- Map('*', Mi, p)
