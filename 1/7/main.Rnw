@@ -92,8 +92,8 @@
 
 \subsection{Вспомогательные процедуры}
 
-<<setup, echo=FALSE, cache=FALSE, purl=F>>=
-opts_chunk$set(purl=TRUE, cache=TRUE, autodep=TRUE, tidy=T)
+<<setup, echo=FALSE, cache=FALSE, purl=FALSE>>=
+opts_chunk$set(purl=FALSE, cache=TRUE, autodep=TRUE, tidy=FALSE)
 dep_auto()
 options(digits=6, width=55, formatR.indent=2)
 @
@@ -154,7 +154,7 @@ Mxi <- function(model, xi, u, th)
 {
 	s <- length(th)
 	q <- attr(xi, 'q')
-  r <- ncol(model$X_0(th))
+	r <- ncol(model$X_0(th))
 
 	if (is.null(q))
 		q <- s2q(s)
@@ -227,33 +227,36 @@ dXdxi <- function(xi, model, th, u)
 	return(dXdxi)
 }
 
-mu <- function(u, model, Mxi, th)
+mu <- function(x, model, Mxi, th, u)
 {
-	rez <- Sp(solve(Mxi) %*% M(u, model, th))
+	rez <- Sp(solve(Mxi) %*% M(x=x, model=model, th=th, u=u))
 	return(rez)
 }
 
-dmu <- function(u, model, Mxi, th)
+dmu <- function(x, model, Mxi, th)
 {
 	invMxi <- solve(Mxi)
-	dMdu <- dM(u, model, th)
-	dMdu <- alply(dMdu, c(2,1))
-	dmu_du <- lapply(dMdu, function(dMdu_i) Sp(invMxi %*% dMdu_i))
-	dmu_du <- unlist(dmu_du)
-	return(-dmu_du)
+
+  # FIXME: dM()
+	dMdx <- dM(x, model, th)
+
+	dMdx <- alply(dMdx, c(2,1))
+	dmu_dx <- lapply(dMdx, function(dMdu_i) Sp(invMxi %*% dMdu_i))
+	dmu_dx <- unlist(dmu_dx)
+	return(-dmu_dx)
 }
 
-Xtau <- function(tau, model, a, U, p, th)
+Xtau <- function(tau, model, x, X, p, th, u)
 {
-	U <- rbind(U, a)
+	X <- rbind(X, x)
 
 	p <- p * (1 - tau)
 	p <- c(p, tau)
 
-	xi <- c(U, p)
-	attr(xi, 'q') <- nrow(U)
+	xi <- c(X, p)
+	attr(xi, 'q') <- nrow(X)
 
-	Xtau <- X(xi, model, th)
+	Xtau <- X(xi=xi, model=model, th=th, u=u)
 	return(Xtau)
 }
 @
@@ -262,9 +265,13 @@ Xtau <- function(tau, model, a, U, p, th)
 # NOTE: does not work for many inputs systems
 clean <- function(l)
 {
+    # weight tolerance
     dp <- 5e-2
+
+    # distance tolerance
     dn <- 6e-1
-    A <- l$U
+
+    A <- l$X
     p <- l$p
 
     # clean by weight
@@ -304,12 +311,12 @@ clean <- function(l)
         }
         i <- i + 1
     }
-    return(list(U=A, p=p))
+    return(list(X=A, p=p))
 }
 @
 
 <<dualproc, purl=TRUE>>=
-dualproc <- function(model, l, use.grad=T)
+dualproc <- function(model, l, u=NULL, use.grad=T)
 {
   # inequalities constraints function
   hina <- function(a)
@@ -331,31 +338,39 @@ dualproc <- function(model, l, use.grad=T)
   s <- length(th)
   eta <- s
 
-  U <- l$U
-  N <- ncol(U)
+  X <- l$X
+  n <- ncol(X)
   p <- l$p
+
+  if (is.null(u))
+    u <- l$u
+  if (is.null(u))
+    stop('u is null')
 
   repeat {
     # 1
-    xi <- c(U, p)
-    attr(xi, 'q') <- nrow(U)
+    xi <- c(X, p)
+    attr(xi, 'q') <- nrow(X)
 
-    Mxi <- Mxi(model, xi, th)
+    Mxi <- Mxi(model, xi, u, th)
 
     repeat {
-      u <- runif(N, min=-1, max=1)
+      x <- runif(n, min=-1, max=1)
 
       # 2
-      l <- slsqp(u, function(u, model, Mxi, th) -mu(u, model, Mxi, th),
-                 gr=gr, hin=hina, Mxi=Mxi, model=model, th=th,
-                 control=nlopts)
-      u <- l$par
+      l <- slsqp(x,
+             function(x, model, Mxi, th)
+                 -mu(x=x, model=model, Mxi=Mxi, th=th, u=u),
+             gr=gr, hin=hina, Mxi=Mxi, model=model, th=th,
+             control=nlopts)
+
+      x <- l$par
       mu <- -l$value
 
       if (abs(mu - eta) <= d) {
-        xi <- c(U, p)
-        attr(xi, 'q') <- nrow(U)
-        criterion <- X(xi, model, th)
+        xi <- c(X, p)
+        attr(xi, 'q') <- nrow(X)
+        criterion <- X(xi, u, model, th)
         return(list(U=U, p=p, criterion=criterion))
       }
 
@@ -368,36 +383,36 @@ dualproc <- function(model, l, use.grad=T)
 
     # 3
     repeat {
-      x0 <- runif(1)
-      X <- Xtau(model=model, tau=x0, a=u, U=U, p=p, th=th)
+      tau0 <- runif(1)
+      X <- Xtau(model=model, tau=tau0, a=x, X=X, p=p, th=th, u=u)
       if (!is.nan(X))
         break
     }
-    tau <- slsqp(x0, Xtau, hin=hint, model=model, a=u, U=U, p=p, th=th,
+    tau <- slsqp(tau0, Xtau, hin=hint, model=model, x=x, X=X, p=p, th=th, u=u,
                  control=nlopts)$par
 
     # 4: add 'a' to plan
     p <- p * (1 - tau)
     p <- c(p, tau)
 
-    U <- rbind(U, u)
+    X <- rbind(X, x)
 
-    l <- clean(list(U=U, p=p))
-    U <- l$U
+    l <- clean(list(X=X, p=p))
+    X <- l$X
     p <- l$p
 
     # and continue
   }
-  return(list(U=U, p=p))
+  return(list(X=X, p=p))
 }
 
-directproc <- function(model, l, use.grad=T)
+directproc <- function(model, l, u, use.grad=T)
 {
 	th <- l$th
-	U <- l$U
+	X <- l$X
 	p <- l$p
-	xi <- c(U, p)
-	q <- nrow(U)
+	xi <- c(X, p)
+	q <- nrow(X)
 
 	hin <- function(u) {
 		p <- tail(u, n=q)
@@ -420,16 +435,16 @@ directproc <- function(model, l, use.grad=T)
 	else
 		gr <- NULL
 
-	l1 <- slsqp(xi, X, gr=gr, hin=hin, heq=heq, model=model, th=th,
+	l1 <- slsqp(xi, X, gr=gr, hin=hin, heq=heq, model=model, u=u, th=th, 
 							control=nlopts)
 
 	p <- tail(l1$par, q)
-	U <- head(l1$par, -q)
+	X <- head(l1$par, -q)
 
-	U <- matrix(U, nrow=q)
+	X <- matrix(X, nrow=q)
 
-	return(list(U=U, p=p, th=th, criterion=l1$value, iter=l1$iter,
-							message=l1$message))
+	return(list(X=X, p=p, th=th, criterion=l1$value, iter=l1$iter,
+						message=l1$message))
 }
 @
 
@@ -487,7 +502,7 @@ Sp <- function(A) sum(diag(A))
 @
 
 <<imf, size='small', purl=T>>=
-M <- function(u, model, th)
+M <- function(x, model, th, u)
 {
   # TODO: check system for conformability, stability, controlability
   # 1
@@ -508,8 +523,7 @@ M <- function(u, model, th)
   H <- model$H(th)
   Q <- model$Q(th)
   R <- model$R(th)
-  X_0 <- model$X_0(th)
-  # X_0 <- x0
+  X_0 <- matrix(x, ncol=length(x))
   P0 <- model$P0(th)
 
   PsiA <- rbind(Psi, Reduce(rbind, dPsi))
@@ -518,8 +532,13 @@ M <- function(u, model, th)
   Mth <- 0
   Pe <- P0
   dPe <- dP0
+
   if (is.vector(u))
     u <- t(u)
+
+  if (is.vector(x))
+    x <- t(x)
+
   N <- ncol(u)
   n <- nrow(Phi)
 
@@ -819,15 +838,15 @@ th <- c(1,1)
 
 \subsection{Начальный план}
 
-<<init-plan, purl=F>>=
+<<init-plan, purl=T>>=
 set.seed(101);
 
-(l <- randPlan(model, 2, th))
+(l <- randPlan(model=model, N=2, th=th))
 @
 
 \subsection{Планирование с помощью \emph{прямой} процедуры}
 
-<<direct>>=
+<<direct, purl=F>>=
 lsd <- directproc(model, l)
 lsd$U
 lsd$p
@@ -845,7 +864,7 @@ clean(lsd)
 
 \newpage
 \subsection{Планирование с помощью \emph{двойственной} процедуры}
-<<dual>>=
+<<dual, purl=F>>=
 dualproc(model, l)
 @
 
