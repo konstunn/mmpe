@@ -35,6 +35,20 @@
 
 \DeclareMathOperator{\Sp}{Sp}
 
+\newcommand{\pred}[0]{t_{k+1}|t_k}
+\newcommand{\est}[0]{t_k|t_k}
+\newcommand{\fut}[0]{t_{k+1}}
+\newcommand{\estfut}[0]{t_{k+1}|t_{k+1}}
+
+\renewcommand{\vec}[1]{#1}
+
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\pdpk}[1]{\pd{#1}{\theta_i}}
+
+\newcommand{\inv}[1]{#1^{-1}}
+
+\newcommand{\eps}{\varepsilon}
+
 \begin{document}
 
 \setcounter{secnumdepth}{0}
@@ -115,7 +129,6 @@
 
 \subsection{Описание модельной структуры}
 
-\renewcommand{\vec}[1]{#1}
 
 Модель стохастической динамической линейной дискретной системы в простанстве
 состояний в виде \cite{mono}:
@@ -178,7 +191,6 @@ P(0)$ и в вектор $\overline{\vec{x}}(0)$ в различных комб�
 
 \subsection{Критерий идентификации}
 
-\newcommand{\eps}{\varepsilon}
 
 В качестве критерия идентификации используется логарифмическая функция
 правдоподобия. Она имеет вид \cite{mono}:
@@ -251,7 +263,6 @@ $\Delta_1$, соответствующее текущему значению в�
 \end{split}
 \end{equation*}
 
-\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
 
 Алгоритм вычисления градиента критерия следующий \cite{mono}:
 \begin{enumerate}
@@ -289,18 +300,12 @@ $i = 1, 2, \ldots, s$ по формулам, вытекающим из урав�
 \end{equation*}
 
 
-\newcommand{\pdpk}[1]{\pd{#1}{\theta_i}}
-\newcommand{\pred}[0]{t_{k+1}|t_k}
-\newcommand{\est}[0]{t_k|t_k}
-\newcommand{\fut}[0]{t_{k+1}}
-\newcommand{\estfut}[0]{t_{k+1}|t_{k+1}}
 
 \[
 	\pdpk{B(t_{k+1})} = \pdpk{H} P(t_{k+1}|t_k) H^T + H \pdpk{P(\pred)} H^T +
 	H P(\pred) \pdpk{H^T} + \pdpk{R}; 
 \]
 
-\newcommand{\inv}[1]{#1^{-1}}
 
 \begin{equation*}
 \begin{split}
@@ -371,11 +376,35 @@ $i = 1, 2, \ldots, s$ и закончим процесс.
 
 \end{enumerate}
 
-\section{Ход работы}
+\section{Примеры решений}
 
-\subsection{Примеры решений}
+% TODO: introduce counter
+% TODO: print numpy arrays instead of matrices
+\subsection{Пример 1: параметры в матрице перехода $F$}
+\[
+	\begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} =
+	\begin{pmatrix} \theta_1 & 0 \\ 0 & \theta_2 \end{pmatrix}
+	\begin{pmatrix} x_1(t_k) \\ x_2(t_k) \end{pmatrix}
+	+ \begin{pmatrix} u_1(t_k) \\ u_2(t_k) \end{pmatrix}
+	+ \begin{pmatrix} w_1(t_k) \\ w_2(t_k) \end{pmatrix}
+\]
+\[
+	\begin{pmatrix} y_1(\fut) \\ y_2(\fut) \end{pmatrix} =
+	\begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} +
+	\begin{pmatrix} v_1(\fut) \\ v_2(\fut) \end{pmatrix}
+\]
+\[
+	\overline{x}(0) = \begin{pmatrix} 0 \\ 0 \end{pmatrix},
+	P(0) = \begin{pmatrix} 0.01 & 0 \\ 0 & 0.01 \end{pmatrix}
+\]
 
-отличаются вхождением параметров в Q, R, C, F, H
+\subsection{Пример 2: параметры в матрице управления $C$}
+
+\subsection{Пример 3: параметры в матрице наблюдения $H$}
+
+\subsection{Пример 4: параметры в матрице $Q$}
+
+\subsection{Пример 5: параметры в матрице $R$}
 
 построить поверхность отражающую зависимость критерия от тета
 
@@ -452,7 +481,7 @@ print(th_e)
 
 \begin{appendices}
 
-\section{Исходные тексты}
+\section{Исходные тексты программ}
 
 \begin{pyverbatim}[][fontsize=\small]
 
