@@ -241,49 +241,49 @@ Xtau <- function(tau, model, a, U, p, th)
 # NOTE: does not work for many inputs systems
 clean <- function(l)
 {
-	dp <- 5e-2
-	dn <- 6e-1
-	A <- l$U
-	p <- l$p
+  dp <- 5e-2
+  dn <- 6e-1
+  A <- l$U
+  p <- l$p
 
-	# clean by weight
-	i <- which(p <= dp)
-	if (length(i) != 0) {
-		p[-i] <- p[-i] + sum(p[i]) / length(p[-i])
-		p <- p[-i]
-		A <- A[-i, , drop=FALSE]
-	}
+  # clean by weight
+  i <- which(p <= dp)
+  if (length(i) != 0) {
+    p[-i] <- p[-i] + sum(p[i]) / length(p[-i])
+    p <- p[-i]
+    A <- A[-i, , drop=FALSE]
+  }
 
-	# clean by distance
-	i <- 1
-	while (i <= nrow(A) - 1)
-	{
-		j <- i + 1
-		while (j <= nrow(A))
-		{
-			r <- A[i,] - A[j,]
-			n <- norm(as.matrix(r), 'F')
-			if (n <= dn)
-			{
-				# merge i and j points
-				px <- sum(p[c(i,j)])
-				x <- 1 / px * (p[i] * A[i,] + p[j] * A[j,])
-				A <- A[-c(i,j), , drop=FALSE]
-				A <- rbind(A, x)
-				p <- p[-c(i,j)]
-				p <- c(p, px)
-				i <- i - 1
-				if (i < 1)
-					i <- 1
-				j <- j - 1
-				if (j < 1)
-					j <- 1
-			}
-			j <- j + 1
-		}
-		i <- i + 1
-	}
-	return(list(U=A, p=p))
+  # clean by distance
+  i <- 1
+  while (i <= nrow(A) - 1)
+  {
+    j <- i + 1
+    while (j <= nrow(A))
+    {
+      r <- A[i,] - A[j,]
+      n <- norm(as.matrix(r), 'F')
+      if (n <= dn)
+      {
+        # merge i and j points
+        px <- sum(p[c(i,j)])
+        x <- 1 / px * (p[i] * A[i,] + p[j] * A[j,])
+        A <- A[-c(i,j), , drop=FALSE]
+        A <- rbind(A, x)
+        p <- p[-c(i,j)]
+        p <- c(p, px)
+        i <- i - 1
+        if (i < 1)
+          i <- 1
+        j <- j - 1
+        if (j < 1)
+          j <- 1
+      }
+      j <- j + 1
+    }
+    i <- i + 1
+  }
+  return(list(U=A, p=p))
 }
 @
 
