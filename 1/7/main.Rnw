@@ -180,9 +180,10 @@ Mxi <- function(model, xi, u, th)
 }
 
 # FIXME: take case r > 1 into account
-X <- function(xi, model, th)
+# D-criterion
+X <- function(xi, u, model, th)
 {
-	Mxi <- Mxi(model, xi, th)
+	Mxi <- Mxi(model=model, xi=xi, u=u, th=th)
 	return(-log(det(Mxi)))
 }
 
