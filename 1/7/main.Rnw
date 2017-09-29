@@ -188,35 +188,38 @@ X <- function(xi, u, model, th)
 }
 
 # NOTE: does not work for many inputs systems
-dXdxi <- function(xi, model, th)
+dXdxi <- function(xi, model, th, u)
 {
 	s <- length(th)
 	q <- s2q(s)
 
 	p <- tail(xi, q)
-	u <- head(xi, -q)
-	U <- matrix(u, q)
+	x <- head(xi, -q)
+	X <- matrix(x, q)
 
-	dMdu <- aaply(U, 1, dM, model=model, th=th)
-	dMdu <- alply(dMdu, 1)
+	# FIXME: dM()
+	dMdu <- aaply(X, 1, dM, model=model, th=th, u=u)
+	dMdu <- alply(dMdu, 1) # convert from array to list
 
 	dMdu <- Map('*', dMdu, -p)
 
-	dMdu <- laply(dMdu, function(x) x)
-	dMdu <- alply(dMdu, c(2,1))
+	dMdu <- laply(dMdu, function(x) x) # convert from list to array
+	dMdu <- alply(dMdu, c(2,1)) # converting
 
-	Mxi <- Mxi(model, xi, th)
+	Mxi <- Mxi(model, xi, u, th) # normalized information matrix
 	invMxi <- solve(Mxi)
 
+	# FIXME:
 	dMdu <- lapply(dMdu, function(dMdu_i) invMxi %*% dMdu_i)
 
 	dXdu <- Map(Sp, dMdu)
 
-	Mi <- alply(U, 1, M, model=model, th=th)
+	Mi <- alply(X, 1, M, model=model, th=th, u=u)
 
 	Mi <- lapply(Mi, function(M_i) -invMxi %*% M_i)
 	dXdp <- Map(Sp, Mi)
 
+	# returns both w.r.t. 'u' and w.r.t. 'p'
 	dXdxi <- c(dXdu, dXdp)
 
 	dXdxi <- unlist(dXdxi, use.names=F)
