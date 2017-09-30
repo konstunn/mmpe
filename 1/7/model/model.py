@@ -2,6 +2,8 @@
 import control
 import autograd.numpy as np
 import autograd
+import scipy
+import itertools
 
 # changing model structure can be faster. just not redefine the whole graph
 
@@ -132,7 +134,7 @@ class Model(object):
             #                structure or parameters values''')
             pass
 
-    def fim(self, x0=None, u=None, th=None):
+    def fim(self, u, x0=None, th=None):
         """
         'u' is 2d numpy array
         """
@@ -142,6 +144,7 @@ class Model(object):
             th = np.array(th)
 
         s = len(th)
+        n = self.__n
 
         # TODO: reduce code, do not repeat yourself
         # make a list and loop through it
@@ -159,32 +162,122 @@ class Model(object):
         # eval
         jlst = [autograd.jacobian(f)(th) for f in lst]
 
-        # TODO: refactor
+        # TODO: refactor?
         jlst = [[np.squeeze(j) for j in np.dsplit(jel)] for jel in jlst]
 
-        dF, dC, dG, dH, dQ, dR, dX0, dP0 = jlst
+        dF, dC, dG, dH, dQ, dR, dX0, dPe = jlst
 
         # eval
         F, C, G, H, Q, R, X0, P0 = [f(th) for f in lst]
 
         if x0 is not None:
-            X0 = x0
+            X0 = np.array(x0).reshape([n, 1])
 
         C_A = np.vstack(dC)
-        C_A = np.vstack((C, C_A))
+        C_A = np.vstack([C, C_A])
 
         M = np.zeros([s, s])
 
-        k = 0
+        t = np.transpose
+        inv = np.linalg.inverse
+        Sp = np.trace
+        Pe = P0
+        Inn = np.eye(n)
+        Onn = np.zeros([n, n])
 
-        if k == 0:
-            # E_A =
-            pass
-        elif k > 0:
-            # E_A =
-            pass
+        # TODO: cast every thing to np.matrix and use '*' multiplication syntax
 
-        pass
+        def F_A(F, dF, H, K_):
+            _1st_col = [dF_i - K_ @ dH_i for dF_i, dH_i in zip(dF, dH)]
+            _1st_col = np.vstack(_1st_col)
+            _1st_col = np.vstack(F, _1st_col)
+
+            bdiag = scipy.linalg.bdiag([F - K_ @ H] * s)
+            rez = np.hstack([_1st_col, bdiag])
+
+            _1st_row = np.hstack([np.zeros([n, n])] * s)
+            _1st_row = np.hstack([F, _1st_row])
+
+            rez = np.hstack([_1st_row, rez])
+            return rez
+
+        def X_Ap(F_A, X_Ap, u, k):
+            if k == 0:
+                F_ = np.vstack(dF)
+                F_ = np.vstack([F, F_])
+
+                FdX0 = [F @ dX0_i for dX0_i in dX0]
+                FdX0 = np.vstack(FdX0)
+                OFdX0 = np.vstack([Onn, FdX0])
+
+                return F_ @ X0 + OFdX0 + C_A @ u[k]
+            elif k > 0:
+                return F_A @ X_Ap + C_A @ u[k]
+
+        def C(i):
+            O = [np.zeros([n, n])] * i
+            C = np.hstack([np.hstack(O), np.eye(n)])
+            C = np.hstack([C, [np.zeros([n, n])] * (s-i)])
+            return C
+
+        N = u.shape[1]
+
+        for k in range(N-1):
+            if k == 0:
+                E_A = np.zeros([n, n])
+            elif k > 0:
+                E_A = F_A @ E_A @ t(F_A) + K_A @ B @ t(K_A)
+
+            X_Ap = X_Ap(F_A, X_Ap, u, k)
+
+            # Pp, B, K, Pu, K_
+            Pp = F @ Pe @ t(F) + G @ Q @ t(G)
+            B = H @ Pp @ t(H) + R
+            invB = inv(B)
+            K = Pp @ t(H) @ invB
+            Pu = (Inn - K @ H) @ Pp
+            K_ = F @ K
+
+            F_A = F_A(F, dF, H, K_)
+
+            dPp = [dF_i @ Pe @ t(F) + F @ dPe_i @ t(F) + F @ Pe @ t(dF_i) +
+                dG_i @ Q @ t(G) + G @ dQ_i @ t(G) + G @ Q @ t(dG_i)
+                for dF_i, dPe_i, dG_i, dQ_i in zip(dF, dPe, dG, dQ)]
+
+            dB = [dH_i @ Pp @ t(H) + H @ dPp_i @ t(H) + H @ Pp @ t(dH_i) + dR_i
+                for dH_i, dPp_i, dR_i in zip(dH, dPp, dR)]
+
+            dK = [(dPp_i @ t(H) + Pp @ t(dH_i) - Pp @ t(H) @ invB @ dB_i) @ invB
+                for dPp_i, dH_i, dB_i in zip(dPp, dH, dB)]
+
+            dPu = [(Inn - K @ H) @ dPp_i - (dK_i @ H + K @ dH_i) @ Pp
+                for dPp_i, dK_i, dH_i in zip(dPp, dK, dH)]
+
+            dK_ = [dF_i @ K + F @ dK_i for dF_i, dK_i in zip(dF, dK)]
+
+            K_A = np.vstack(dK_)
+            K_A = np.vstack([K_, K_A])
+
+            # 8: AM
+            AM = np.zeros([s, s])
+
+            for i, j in itertools.product(range(s), range(s)):
+                EXX = E_A + X_Ap @ t(X_Ap)
+                S = Sp(C(0) @ EXX @ t(C(0)) @ t(dH[j]) @ invB @ dH[i])
+                S += Sp(C(0) @ EXX @ t(C(j)) @ t(H) @ invB @ dH[i])
+                S += Sp(C(i) @ EXX @ t(C(0)) @ t(dH[j]) @ invB @ H)
+                S += Sp(C(i) @ EXX @ t(C(j)) @ t(H) @ invB @ H)
+                S += 0.5 * Sp(dB[i] @ invB @ dB[j] @ invB)
+                AM[i, j] += S
+
+            M = M + AM
+
+            # TODO: dont forget to update P, dP etc.
+            Pe = Pu
+            dPe = dPu
+
+        return M
+
 
     def norm_fim(plan):
         pass
