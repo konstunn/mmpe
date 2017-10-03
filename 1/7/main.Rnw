@@ -550,7 +550,7 @@ M <- function(x, model, th, u)
 
       EAp <- PhiA %*% EAp %*% t(PhiA) + K_Ap %*% Bp %*% t(K_Ap)
     } else {
-      EAp <- matrix(0, nrow=3, ncol=3)
+      EAp <- matrix(0, nrow=n, ncol=n)
     }
 
     # 4
