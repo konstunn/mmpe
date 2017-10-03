@@ -24,7 +24,7 @@ class Model(object):
         # TODO: allow both constant matrices and callables
 
         def wrap_np(f):
-            return lambda th: np.array(f(th))
+            return lambda th: np.array(f(th), ndmin=2)
 
         # store arguments, after that check them
         F = self.__F = wrap_np(F)
@@ -36,7 +36,7 @@ class Model(object):
         w_cov = self.__w_cov = wrap_np(w_cov)
         v_cov = self.__v_cov = wrap_np(v_cov)
 
-        th = self.__th = np.array(th)
+        th = self.__th = np.array(th, dtype=np.float64)
 
         # evaluate all functions
         F = F(th)
@@ -53,6 +53,9 @@ class Model(object):
         self.__m = m = H.shape[0]
         self.__p = p = G.shape[1]
         self.__r = r = C.shape[1]
+        # FIXME: exception if among those there is a scalar
+
+        x0_m = x0_m.reshape([n, 1])
 
         # generate means
         w_mean = np.zeros([p, 1], np.float64)
@@ -66,9 +69,9 @@ class Model(object):
         u = np.ones([r, 1])
         # generate random vectors
         # squeeze, because mean must be one dimensional
-        x = np.random.multivariate_normal(x0_m.squeeze(), x0_cov)
-        w = np.random.multivariate_normal(w_mean.squeeze(), w_cov)
-        v = np.random.multivariate_normal(v_mean.squeeze(), v_cov)
+        x = np.random.multivariate_normal(x0_m.flatten(), x0_cov)
+        w = np.random.multivariate_normal(w_mean.flatten(), w_cov)
+        v = np.random.multivariate_normal(v_mean.flatten(), v_cov)
 
         # shape them as column-vectors
         x = x.reshape([n, 1])
@@ -163,9 +166,9 @@ class Model(object):
         jlst = [autograd.jacobian(f)(th) for f in lst]
 
         # TODO: refactor?
-        jlst = [[np.squeeze(j) for j in np.dsplit(jel)] for jel in jlst]
+        jlst = [[np.squeeze(j, 2) for j in np.dsplit(jel, s)] for jel in jlst]
 
-        dF, dC, dG, dH, dQ, dR, dX0, dPe = jlst
+        dF, dC, dG, dH, dQ, dR, dX0, dP0 = jlst
 
         # eval
         F, C, G, H, Q, R, X0, P0 = [f(th) for f in lst]
@@ -179,56 +182,65 @@ class Model(object):
         M = np.zeros([s, s])
 
         t = np.transpose
-        inv = np.linalg.inverse
+        inv = np.linalg.inv
         Sp = np.trace
         Pe = P0
+        dPe = dP0
         Inn = np.eye(n)
         Onn = np.zeros([n, n])
 
         # TODO: cast every thing to np.matrix and use '*' multiplication syntax
 
-        def F_A(F, dF, H, K_):
+        def F_A_f(F, dF, H, K_):
             _1st_col = [dF_i - K_ @ dH_i for dF_i, dH_i in zip(dF, dH)]
             _1st_col = np.vstack(_1st_col)
-            _1st_col = np.vstack(F, _1st_col)
 
-            bdiag = scipy.linalg.bdiag([F - K_ @ H] * s)
+            bdiag = scipy.linalg.block_diag(*[F - K_ @ H] * s)
             rez = np.hstack([_1st_col, bdiag])
 
             _1st_row = np.hstack([np.zeros([n, n])] * s)
             _1st_row = np.hstack([F, _1st_row])
 
-            rez = np.hstack([_1st_row, rez])
+            rez = np.vstack([_1st_row, rez])
             return rez
 
-        def X_Ap(F_A, X_Ap, u, k):
+        def X_Ap_f(F_A, X_Ap, u, k):
             if k == 0:
                 F_ = np.vstack(dF)
                 F_ = np.vstack([F, F_])
 
-                FdX0 = [F @ dX0_i for dX0_i in dX0]
+                # force dX0_i to be 2D array
+                FdX0 = [F @ np.array(dX0_i, ndmin=2) for dX0_i in dX0]
                 FdX0 = np.vstack(FdX0)
                 OFdX0 = np.vstack([Onn, FdX0])
 
-                return F_ @ X0 + OFdX0 + C_A @ u[k]
+                # u[:,[k]] - get k-th column as column vector
+                return F_ @ X0 + OFdX0 + C_A @ u[:, [0]]
             elif k > 0:
-                return F_A @ X_Ap + C_A @ u[k]
+                return F_A @ X_Ap + C_A @ u[:, [k]]
 
         def C(i):
+            i = i + 1
             O = [np.zeros([n, n])] * i
-            C = np.hstack([np.hstack(O), np.eye(n)])
-            C = np.hstack([C, [np.zeros([n, n])] * (s-i)])
+            O = np.hstack(O) if i else []
+            C = np.hstack([O, np.eye(n)]) if i else np.eye(n)
+            O = [np.zeros([n, n])] * (s-i)
+            O = np.hstack(O) if s-i else []
+            C = np.hstack([C, O]) if s-i else C
             return C
 
+        u = np.array(u, ndmin=2)  # FIXME: add ndmin to other array construtors
+        # exception is thrown here if u is a 1 d python list
         N = u.shape[1]
 
-        for k in range(N-1):
+        for k in range(N):
             if k == 0:
-                E_A = np.zeros([n, n])
+                E_A = np.zeros([n*(s+1), n*(s+1)])
+                X_Ap = X_Ap_f(None, None, u, k)
             elif k > 0:
                 E_A = F_A @ E_A @ t(F_A) + K_A @ B @ t(K_A)
+                X_Ap = X_Ap_f(F_A, X_Ap, u, k)
 
-            X_Ap = X_Ap(F_A, X_Ap, u, k)
 
             # Pp, B, K, Pu, K_
             Pp = F @ Pe @ t(F) + G @ Q @ t(G)
@@ -238,7 +250,7 @@ class Model(object):
             Pu = (Inn - K @ H) @ Pp
             K_ = F @ K
 
-            F_A = F_A(F, dF, H, K_)
+            F_A = F_A_f(F, dF, H, K_)
 
             dPp = [dF_i @ Pe @ t(F) + F @ dPe_i @ t(F) + F @ Pe @ t(dF_i) +
                 dG_i @ Q @ t(G) + G @ dQ_i @ t(G) + G @ Q @ t(dG_i)
@@ -261,14 +273,19 @@ class Model(object):
             # 8: AM
             AM = np.zeros([s, s])
 
+            EXX = E_A + X_Ap @ t(X_Ap)
+
+            C0 = C(0)
+
+            # FIXME: autograd does not support +=
             for i, j in itertools.product(range(s), range(s)):
-                EXX = E_A + X_Ap @ t(X_Ap)
-                S = Sp(C(0) @ EXX @ t(C(0)) @ t(dH[j]) @ invB @ dH[i])
-                S += Sp(C(0) @ EXX @ t(C(j)) @ t(H) @ invB @ dH[i])
-                S += Sp(C(i) @ EXX @ t(C(0)) @ t(dH[j]) @ invB @ H)
-                S += Sp(C(i) @ EXX @ t(C(j)) @ t(H) @ invB @ H)
-                S += 0.5 * Sp(dB[i] @ invB @ dB[j] @ invB)
-                AM[i, j] += S
+                S1 = Sp(C0 @ EXX @ t(C0) @ t(dH[j]) @ invB @ dH[i])
+                S2 = Sp(C0 @ EXX @ t(C(j)) @ t(H) @ invB @ dH[i])
+                S3 = Sp(C(i) @ EXX @ t(C0) @ t(dH[j]) @ invB @ H)
+                S4 = Sp(C(i) @ EXX @ t(C(j)) @ t(H) @ invB @ H)
+                S5 = 0.5 * Sp(dB[i] @ invB @ dB[j] @ invB)
+                # XXX: autograd does not support element assigning
+                AM[i, j] = S1 + S2 + S3 + S4 + S5
 
             M = M + AM
 
