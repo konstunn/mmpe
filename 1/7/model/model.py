@@ -219,7 +219,7 @@ class Model(object):
             elif k > 0:
                 return F_A @ X_Ap + C_A @ u[:, [k]]
 
-        def C(i):
+        def Cf(i):
             i = i + 1
             O = [np.zeros([n, n])] * i
             O = np.hstack(O) if i else []
@@ -275,14 +275,14 @@ class Model(object):
 
             EXX = E_A + X_Ap @ t(X_Ap)
 
-            C0 = C(0)
+            C0 = Cf(0)
 
             # FIXME: autograd does not support +=
             for i, j in itertools.product(range(s), range(s)):
                 S1 = Sp(C0 @ EXX @ t(C0) @ t(dH[j]) @ invB @ dH[i])
-                S2 = Sp(C0 @ EXX @ t(C(j)) @ t(H) @ invB @ dH[i])
-                S3 = Sp(C(i) @ EXX @ t(C0) @ t(dH[j]) @ invB @ H)
-                S4 = Sp(C(i) @ EXX @ t(C(j)) @ t(H) @ invB @ H)
+                S2 = Sp(C0 @ EXX @ t(Cf(j)) @ t(H) @ invB @ dH[i])
+                S3 = Sp(Cf(i) @ EXX @ t(C0) @ t(dH[j]) @ invB @ H)
+                S4 = Sp(Cf(i) @ EXX @ t(Cf(j)) @ t(H) @ invB @ H)
                 S5 = 0.5 * Sp(dB[i] @ invB @ dB[j] @ invB)
                 # XXX: autograd does not support element assigning
                 AM[i, j] = S1 + S2 + S3 + S4 + S5
