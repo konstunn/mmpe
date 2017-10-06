@@ -303,9 +303,86 @@ class Model(object):
 
         return M
 
+    def norm_fim(self, plan, u, th=None):
+        ''' plan: list of list of 'x0' and list of 'p' '''
 
-    def norm_fim(plan):
-        pass
+        x, p = plan
+        x = np.array(x)
+        p = np.array(p)
 
-    def d_crit(plan):
+        # FIXME:
+        # validate plan
+        for x_i, p_i in zip(x, p):
+            if len(x_i) != self.__n:
+                raise Exception('invalid plan: len(x_i) != n')
+
+        Mn = 0
+
+        for x_i, p_i in zip(x, p):
+            # compute in parallel
+            Mn += p_i * self.fim(u, x_i, th)
+
+        return Mn
+
+    # this is a wraps norm_fim with logdet
+    def d_opt_crit(self, plan, u, th=None):
+        Mn = self.norm_fim(plan, u, th)
+        sign, logdet = np.linalg.slogdet(Mn)
+        return -logdet
+
+    # this is wraps around self.d_opt_crit() above
+    def __d_crit_to_optimize(self, plan, q, u, th=None):
+
+        p = plan[-q:]
+        x = plan[:-q]
+        x = np.array_split(x, q)
+        plan = [x, p]
+
+        crit = self.d_opt_crit(plan, u, th)
+        return crit
+
+    def direct_plan(self, plan0, u, th=None):
+        ''' plan0: list of list of 'x0' and list of 'p' '''
+        n = self.__n
+
+        x, p = plan0
+
+        for x_i, p_i in zip(x, p):
+            if len(x_i) != n:
+                raise Exception('invalid plan: len(x_i) != n')
+
+        q = len(p)
+
+        x_bounds = [(-1, 1)] * q * n
+        p_bounds = [(0, 1)] * q
+        bounds = x_bounds + p_bounds
+
+        def heq(x):
+            p = x[-q:]
+            return np.sum(p) - 1
+
+        constraints = {'type': 'eq', 'fun': heq}
+
+        flatten = lambda l: [item for sublist in l for item in sublist]
+
+        # FIXME: if x and p are arrays, this will sum them
+        x0 = flatten(x) + p
+
+        #
+        rez = scipy.optimize.minimize(fun=self.__d_crit_to_optimize, x0=x0,
+                                      args=(q, u, th), method='SLSQP',
+                                      constraints=constraints, bounds=bounds,
+                                      options={'disp': True})
+        new_plan = rez['x']
+
+        pn = new_plan[-q:]
+        xn = new_plan[:-q]
+        xn = np.array_split(xn, q)
+        new_plan = [xn, pn]
+
+        # TODO: return loss and its jacobian values
+        # return dictionary
+        return new_plan
+
+    def dualproc(self):
         pass
