@@ -170,8 +170,12 @@ class Model(object):
 
         dF, dC, dG, dH, dQ, dR, dX0, dP0 = jlst
 
+        dX0 = [dX0_i.reshape([n, 1]) for dX0_i in dX0]
+
         # eval
         F, C, G, H, Q, R, X0, P0 = [f(th) for f in lst]
+
+        X0 = X0.reshape([n, 1])
 
         if x0 is not None:
             X0 = np.array(x0).reshape([n, 1])
@@ -188,6 +192,7 @@ class Model(object):
         dPe = dP0
         Inn = np.eye(n)
         Onn = np.zeros([n, n])
+        On1 = np.zeros([n, 1])
 
         # TODO: cast every thing to np.matrix and use '*' multiplication syntax
 
@@ -212,7 +217,7 @@ class Model(object):
                 # force dX0_i to be 2D array
                 FdX0 = [F @ np.array(dX0_i, ndmin=2) for dX0_i in dX0]
                 FdX0 = np.vstack(FdX0)
-                OFdX0 = np.vstack([Onn, FdX0])
+                OFdX0 = np.vstack([On1, FdX0])
 
                 # u[:,[k]] - get k-th column as column vector
                 return F_ @ X0 + OFdX0 + C_A @ u[:, [0]]
@@ -232,6 +237,9 @@ class Model(object):
         u = np.array(u, ndmin=2)  # FIXME: add ndmin to other array construtors
         # exception is thrown here if u is a 1 d python list
         N = u.shape[1]
+
+        if u.shape[0] != C.shape[1]:
+            raise Exception('invalid shape of 'u'')
 
         for k in range(N):
             if k == 0:
@@ -271,7 +279,7 @@ class Model(object):
             K_A = np.vstack([K_, K_A])
 
             # 8: AM
-            AM = np.zeros([s, s])
+            AM = list()
 
             EXX = E_A + X_Ap @ t(X_Ap)
 
@@ -284,9 +292,9 @@ class Model(object):
                 S3 = Sp(Cf(i) @ EXX @ t(C0) @ t(dH[j]) @ invB @ H)
                 S4 = Sp(Cf(i) @ EXX @ t(Cf(j)) @ t(H) @ invB @ H)
                 S5 = 0.5 * Sp(dB[i] @ invB @ dB[j] @ invB)
-                # XXX: autograd does not support element assigning
-                AM[i, j] = S1 + S2 + S3 + S4 + S5
+                AM.append(S1 + S2 + S3 + S4 + S5)
 
+            AM = np.array(AM).reshape([s, s])
             M = M + AM
 
             # TODO: dont forget to update P, dP etc.
