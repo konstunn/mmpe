@@ -400,5 +400,37 @@ class Model(object):
         # return dictionary
         return new_plan
 
+    def clean(self, plan, dn=0.6, dp=0.05):
+        ''' plan = [x, p], x is 2d array, p is list '''
+        x, p = plan
+
+        # by distance
+        while True:
+            tree = scipy.spatial.cKDTree(x)
+            bt = tree.query_ball_tree(tree, dn)
+            lens = [len(bt_i) for bt_i in bt]
+            max_len = max(lens)
+            if max_len == 1:
+                break
+            else:
+                i = lens.index(max_len)
+                ids = bt[i]
+                npt = sum([p[i] * x[i] for i in ids])
+                x = np.delete(x, ids, 0)
+                x = np.vstack([x, npt])
+                pn = sum([p[i] for i in range(len(p)) if i in ids])
+                p = [p[i] for i in range(len(p)) if i not in ids]
+                p.append(pn)
+
+        # by weight
+        ids = [i for i in range(len(p)) if p[i] < dp]
+        for i in ids:
+            x = np.delete(x, i, 0)
+            p_i = p.pop(i)
+            p = [p_j + p_i / len(p) for p_j in p]
+
+        return x, p
+
+
     def dualproc(self):
         pass
