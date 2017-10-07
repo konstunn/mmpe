@@ -83,12 +83,14 @@ class Model(object):
         H * x + v
 
         # check controllability, stability, observability
-        self.__validate()
+        # self.__validate()
 
         # if the execution reached here, all is fine so
         # define corresponding computational tensorflow graphs
         # self.__define_observations_simulation()
         # self.__define_likelihood_computation()
+
+        self.__d_crit_to_opt_grad_f = autograd.grad(self.__d_crit_to_optimize)
 
     def __isObservable(self, th=None):
         if th is None:
@@ -329,6 +331,20 @@ class Model(object):
         Mn = self.norm_fim(plan, u, th)
         sign, logdet = np.linalg.slogdet(Mn)
         return -logdet
+
+    def d_crit_opt_grad(self, plan, u, th=None):
+        x, p = plan
+        x = np.array(x).flatten()
+        p = np.array(p)
+        q = len(p)
+        plan = np.hstack([x, p])
+        grad = self.__d_crit_to_opt_grad_f(plan, q, u, th)
+        return grad
+
+    def __d_crit_to_opt_grad(self, plan, q, u, th=None):
+        plan = np.array(plan)
+        grad = self.__d_crit_to_opt_grad_f(plan, q, u, th)
+        return grad
 
     # this is wraps around self.d_opt_crit() above
     def __d_crit_to_optimize(self, plan, q, u, th=None):
