@@ -314,6 +314,7 @@ class Model(object):
                 raise Exception('invalid plan: len(x_i) != n')
         Mn = 0
 
+        # extract p, x and compute fim for every point of the plan
         for x_i, p_i in zip(x, p):
             Mn += p_i * self.fim(u, x_i, th)  # TODO: compute in parallel
 
@@ -326,11 +327,12 @@ class Model(object):
         return -logdet
 
     def d_crit_opt_grad(self, plan, u, th=None):
+        # flatten plan
         x, p = plan
         x = np.array(x).flatten()
         p = np.array(p)
         q = len(p)
-        plan = np.hstack([x, p])
+        plan = np.hstack([x, p])  # 1d array
         grad = self.__d_crit_to_opt_grad_f(plan, q, u, th)
         return grad
 
@@ -341,7 +343,7 @@ class Model(object):
 
     # this is wraps around self.d_opt_crit() above
     def __d_crit_to_optimize(self, plan, q, u, th=None):
-
+        # unflatten plan
         p = plan[-q:]
         x = plan[:-q]
         x = np.array_split(x, q)
@@ -397,7 +399,7 @@ class Model(object):
         ''' plan = [x, p], x is 2d array, p is list '''
         x, p = plan
 
-        # by distance
+        # clean by distance
         while True:
             tree = scipy.spatial.cKDTree(x)
             bt = tree.query_ball_tree(tree, dn)
