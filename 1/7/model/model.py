@@ -259,17 +259,17 @@ class Model(object):
 
             # TODO: numba jit it
             dPp = [dF_i @ Pe @ t(F) + F @ dPe_i @ t(F) + F @ Pe @ t(dF_i) +
-                dG_i @ Q @ t(G) + G @ dQ_i @ t(G) + G @ Q @ t(dG_i)
-                for dF_i, dPe_i, dG_i, dQ_i in zip(dF, dPe, dG, dQ)]
+                   dG_i @ Q @ t(G) + G @ dQ_i @ t(G) + G @ Q @ t(dG_i)
+                   for dF_i, dPe_i, dG_i, dQ_i in zip(dF, dPe, dG, dQ)]
 
             dB = [dH_i @ Pp @ t(H) + H @ dPp_i @ t(H) + H @ Pp @ t(dH_i) + dR_i
-                for dH_i, dPp_i, dR_i in zip(dH, dPp, dR)]
+                  for dH_i, dPp_i, dR_i in zip(dH, dPp, dR)]
 
             dK = [(dPp_i @ t(H) + Pp @ t(dH_i) - Pp @ t(H) @ invB @ dB_i) @ invB
-                for dPp_i, dH_i, dB_i in zip(dPp, dH, dB)]
+                  for dPp_i, dH_i, dB_i in zip(dPp, dH, dB)]
 
             dPu = [(Inn - K @ H) @ dPp_i - (dK_i @ H + K @ dH_i) @ Pp
-                for dPp_i, dK_i, dH_i in zip(dPp, dK, dH)]
+                   for dPp_i, dK_i, dH_i in zip(dPp, dK, dH)]
 
             dK_ = [dF_i @ K + F @ dK_i for dF_i, dK_i in zip(dF, dK)]
 
