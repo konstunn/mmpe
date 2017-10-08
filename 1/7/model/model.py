@@ -112,14 +112,13 @@ class Model(object):
         rank = np.linalg.matrix_rank(ctrb_matrix)
         return rank == n
 
-    # FIXME: update, fix for discrete
     def __isStable(self, th=None):
         if th is None:
             th = self.__th
         F = np.array(self.__F(th))
         eigv = np.linalg.eigvals(F)
-        real_parts = np.real(eigv)
-        return np.all(real_parts < 0)
+        abs_val = np.absolute(eigv)
+        return np.all(abs_val < 1)
 
     def __validate(self, th=None):
         # FIXME: do not raise exceptions
