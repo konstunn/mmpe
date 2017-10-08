@@ -120,9 +120,9 @@ class Model(object):
         abs_val = np.absolute(eigv)
         return np.all(abs_val < 1)
 
-    def __validate(self, th=None):
-        # FIXME: do not raise exceptions
-        # TODO: prove, print matrices and their criteria
+    def __validate_model(self, th=None):
+        # FIXME: do not raise exceptions, print warnings
+        # TODO: prove, print matrices and their characteristics
         if not self.__isControllable(th):
             # raise Exception('''Model is not controllable. Set different
             #                structure or parameters values''')
@@ -150,9 +150,6 @@ class Model(object):
         s = len(th)
         n = self.__n
 
-        # TODO: reduce code, do not repeat yourself
-        # make a list and loop through it
-
         lst = list()
         lst.append(self.__F)
         lst.append(self.__C)
@@ -179,6 +176,7 @@ class Model(object):
         X0 = X0.reshape([n, 1])
 
         if x0 is not None:
+            # on reshape fail exception will be raised
             X0 = np.array(x0).reshape([n, 1])
 
         C_A = np.vstack(dC)
@@ -192,7 +190,6 @@ class Model(object):
         Pe = P0
         dPe = dP0
         Inn = np.eye(n)
-        Onn = np.zeros([n, n])
         On1 = np.zeros([n, 1])
 
         # TODO: cast every thing to np.matrix and use '*' multiplication syntax
@@ -227,16 +224,15 @@ class Model(object):
 
         def Cf(i):
             i = i + 1
-            O = [np.zeros([n, n])] * i
-            O = np.hstack(O) if i else []
-            C = np.hstack([O, np.eye(n)]) if i else np.eye(n)
-            O = [np.zeros([n, n])] * (s-i)
-            O = np.hstack(O) if s-i else []
-            C = np.hstack([C, O]) if s-i else C
+            zeros = [np.zeros([n, n])] * i
+            zeros = np.hstack(zeros) if i else []
+            C = np.hstack([zeros, np.eye(n)]) if i else np.eye(n)
+            zeros = [np.zeros([n, n])] * (s-i)
+            zeros = np.hstack(zeros) if s-i else []
+            C = np.hstack([C, zeros]) if s-i else C
             return C
 
-        u = np.array(u, ndmin=2)  # FIXME: add ndmin to other array construtors
-        # exception is thrown here if u is a 1 d python list
+        u = np.array(u, ndmin=2)
         N = u.shape[1]
 
         if u.shape[0] != C.shape[1]:
@@ -261,6 +257,7 @@ class Model(object):
 
             F_A = F_A_f(F, dF, H, K_)
 
+            # TODO: numba jit it
             dPp = [dF_i @ Pe @ t(F) + F @ dPe_i @ t(F) + F @ Pe @ t(dF_i) +
                 dG_i @ Q @ t(G) + G @ dQ_i @ t(G) + G @ Q @ t(dG_i)
                 for dF_i, dPe_i, dG_i, dQ_i in zip(dF, dPe, dG, dQ)]
@@ -286,7 +283,6 @@ class Model(object):
 
             C0 = Cf(0)
 
-            # FIXME: autograd does not support +=
             for i, j in itertools.product(range(s), range(s)):
                 S1 = Sp(C0 @ EXX @ t(C0) @ t(dH[j]) @ invB @ dH[i])
                 S2 = Sp(C0 @ EXX @ t(Cf(j)) @ t(H) @ invB @ dH[i])
@@ -298,7 +294,7 @@ class Model(object):
             AM = np.array(AM).reshape([s, s])
             M = M + AM
 
-            # TODO: dont forget to update P, dP etc.
+            # update P, dP etc.
             Pe = Pu
             dPe = dPu
 
@@ -316,16 +312,14 @@ class Model(object):
         for x_i, p_i in zip(x, p):
             if len(x_i) != self.__n:
                 raise Exception('invalid plan: len(x_i) != n')
-
         Mn = 0
 
         for x_i, p_i in zip(x, p):
-            # compute in parallel
-            Mn += p_i * self.fim(u, x_i, th)
+            Mn += p_i * self.fim(u, x_i, th)  # TODO: compute in parallel
 
         return Mn
 
-    # this is a wraps norm_fim with logdet
+    # calls norm_fim and logdet it
     def d_opt_crit(self, plan, u, th=None):
         Mn = self.norm_fim(plan, u, th)
         sign, logdet = np.linalg.slogdet(Mn)
