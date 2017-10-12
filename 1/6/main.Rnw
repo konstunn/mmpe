@@ -798,7 +798,7 @@ th <- c(1,1)
 \newpage
 \subsection{Начальный план}
 
-<<init-plan, purl=F>>=
+<<init-plan, purl=T>>=
 set.seed(101);
 
 (l <- randPlan(model, 2, th))
