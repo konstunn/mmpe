@@ -8,12 +8,15 @@
 \usepackage[russian]{babel}
 
 \usepackage[a4paper,margin=1.5cm,footskip=1cm,left=2cm,right=1.5cm,top=1.5cm
-	,bottom=2.0cm]{geometry}
+  ,bottom=2.0cm]{geometry}
 \usepackage{textcase}
 \usepackage{csquotes}
 \usepackage{enumitem}
 
 \usepackage[labelsep=period,justification=centering]{caption}
+
+\usepackage{graphicx}
+\graphicspath{ {figure/} }
 
 \usepackage{amsmath}
 \usepackage{pgfplots}
@@ -25,6 +28,8 @@
 \usepackage{textgreek}
 
 \usepackage{pythontex}
+
+\usepackage{comment}
 
 % 
 \setlist[description]{leftmargin=\parindent,labelindent=\parindent}
@@ -55,35 +60,35 @@
 
 \begin{titlepage}
 
-	\begin{center}
-		Новосибирский государственный технический университет
-		
-		Факультет прикладной математики и информатики
-		
-		Кафедра теоретической и прикладной информатики
-		
-		\vspace{250pt}
-		
-		\textbf{\LARGE{Лабораторная работа № 1}}
-		\medbreak
-		\small{по дисциплине \\
-		\medbreak
-		<<Математические методы планирования эксперимента>>}
-		\vspace{100pt}
-	\end{center}
+  \begin{center}
+    Новосибирский государственный технический университет
+    
+    Факультет прикладной математики и информатики
+    
+    Кафедра теоретической и прикладной информатики
+    
+    \vspace{250pt}
+    
+    \textbf{\LARGE{Лабораторная работа № 1}}
+    \medbreak
+    \small{по дисциплине \\
+    \medbreak
+    <<Математические методы планирования эксперимента>>}
+    \vspace{100pt}
+  \end{center}
 
-	\begin{flushleft}
-		\begin{tabbing}
-			Группа:\qquad\qquad \= ПММ-61\\
-			Студент:            \> Горбунов К. К.\\
-			Преподаватель:      \> Чубич В. М.\\
-		\end{tabbing}
-	\end{flushleft}
+  \begin{flushleft}
+    \begin{tabbing}
+      Группа:\qquad\qquad \= ПММ-61\\
+      Студент:            \> Горбунов К. К.\\
+      Преподаватель:      \> Чубич В. М.\\
+    \end{tabbing}
+  \end{flushleft}
 
-	\begin{center}
-		\vspace{\fill}
-		Новосибирск, 2017 г.
-	\end{center}
+  \begin{center}
+    \vspace{\fill}
+    Новосибирск, 2017 г.
+  \end{center}
 
 \end{titlepage}
 
@@ -98,12 +103,12 @@
 
 \begin{enumerate}
 \item Изучить соответствующий материал лекции на тему <<Оценивание
-	неизвестных параметров дискретных моделей>>
+  неизвестных параметров дискретных моделей>>
 
 \item Последовательно выполнить все задания к лабораторной работе
 
 \item Проверить правильность реализации алгоритмов и работоспособность
-	программ не менее чем на пяти тестах
+  программ не менее чем на пяти тестах
 
 \item Оформить отчет по лабораторной работе
 \end{enumerate}
@@ -113,13 +118,13 @@
 \begin{enumerate}
 
 \item Реализовать вычисление значения критерия максимального
-	\mbox{правдоподобия}
+  \mbox{правдоподобия}
 
 \item Проверить правильность исполнения программы на примерах
 
 \item Для стохастических линейных дискретных моделей при различных
-	вариантах вхождения неизвестных параметров в уравнения состояния и измерения
-	получить оценки параметров
+  вариантах вхождения неизвестных параметров в уравнения состояния и измерения
+  получить оценки параметров
 
 \end{enumerate}
 
@@ -133,27 +138,27 @@
 Модель стохастической динамической линейной дискретной системы в простанстве
 состояний в виде \cite{mono}:
 \begin{equation}
-	\label{eq:initmod}
-	\left\{ 
-		\begin{array}{lll}
-			\vec{x}(t_{k+1}) &= F \vec{x}(t_k) + C \vec{u}(t_k) + G \vec{w}(t_k), & \\ 
-			\vec{y}(t_{k+1}) &= H \vec{x}(t_{k+1}) + \vec{v}(t_{k+1}), 
-			& k = 0,\ldots, N-1
-		\end{array} 
-	\right. 
+  \label{eq:initmod}
+  \left\{ 
+    \begin{array}{lll}
+      \vec{x}(t_{k+1}) &= F \vec{x}(t_k) + C \vec{u}(t_k) + G \vec{w}(t_k),&\\
+      \vec{y}(t_{k+1}) &= H \vec{x}(t_{k+1}) + \vec{v}(t_{k+1}), 
+      & k = 0,\ldots, N-1
+    \end{array} 
+  \right. 
 \end{equation}
 
 Здесь:
 \begin{description}
-	\item [$\vec{x}(t_k)$] -- $n$-вектор состояния;
-	\item [$F$] -- матрица перехода состояния;
-	\item [$\vec{u}(t_k)$] -- $r$-вектор управления (входного воздействия);
-	\item [$C$] -- матрица управления;
-	\item [$\vec{w}(t_k)$] -- $p$-вектор возмущений;
-	\item [$G$] -- матрица влияния возмущений;
-	\item [$H$] -- матрица наблюдения;
-	\item [$\vec{v}(t_{k+1})$] -- $m$-вектор шума измерений;
-	\item [$\vec{y}(t_{k+1})$] -- $m$-вектор наблюдений (измерений) отклика;
+  \item [$\vec{x}(t_k)$] -- $n$-вектор состояния;
+  \item [$F$] -- матрица перехода состояния;
+  \item [$\vec{u}(t_k)$] -- $r$-вектор управления (входного воздействия);
+  \item [$C$] -- матрица управления;
+  \item [$\vec{w}(t_k)$] -- $p$-вектор возмущений;
+  \item [$G$] -- матрица влияния возмущений;
+  \item [$H$] -- матрица наблюдения;
+  \item [$\vec{v}(t_{k+1})$] -- $m$-вектор шума измерений;
+  \item [$\vec{y}(t_{k+1})$] -- $m$-вектор наблюдений (измерений) отклика;
 \end{description}
 
 
@@ -196,9 +201,9 @@ P(0)$ и в вектор $\overline{\vec{x}}(0)$ в различных комб�
 правдоподобия. Она имеет вид \cite{mono}:
 \begin{equation*}
 \begin{split}
-	\chi(\theta) = -\ln{L(\theta)} = \frac{Nm}{2}\ ln{2\pi} + \frac{1}{2}
-	\sum\limits_{k=0}^{N-1} \left[ \eps^T(t_{k+1}) B^{-1}(t_{k+1}) \eps(t_{k+1}) \right]
-	+ \\ + \frac{1}{2} \sum\limits_{k=0}^{N-1} \ln \det B^{-1}(t_{k+1}).
+  \chi(\theta) = -\ln{L(\theta)} = \frac{Nm}{2}\ ln{2\pi} + \frac{1}{2}
+  \sum\limits_{k=0}^{N-1} \left[ \eps^T(t_{k+1}) B^{-1}(t_{k+1}) \eps(t_{k+1}) \right]
+  + \\ + \frac{1}{2} \sum\limits_{k=0}^{N-1} \ln \det B^{-1}(t_{k+1}).
 \end{split}
 \end{equation*}
 
@@ -211,16 +216,16 @@ P(0)$.
 $P(0|0) = P(0)$.
 \item Используя выражения фильтра Калмана, вычислим:
 \[
-	P(t_{k+1}|t_k) = F P(t_k|t_k) F^T + GQG^T;
+  P(t_{k+1}|t_k) = F P(t_k|t_k) F^T + GQG^T;
 \]
 \[
-	B(t_{k+1}) = H P(t_{k+1}|t_k) H^T + R;
+  B(t_{k+1}) = H P(t_{k+1}|t_k) H^T + R;
 \]
 \[
-	K(t_{k+1}) = P(t_{k+1}|t_k) H^T B^{-1}(t_{k+1});
+  K(t_{k+1}) = P(t_{k+1}|t_k) H^T B^{-1}(t_{k+1});
 \]
 \[
-	P(t_{k+1}|t_{k+1}) = \left[ I - K(t_{k+1}) H \right] P(t_{k+1}|t_k).
+  P(t_{k+1}|t_{k+1}) = \left[ I - K(t_{k+1}) H \right] P(t_{k+1}|t_k).
 \]
 \item Вычислим $\Delta_2 = \Delta_2 + \frac{1}{2} \ln \det B(t_{k+1})$.
 \item Увеличим $k$ на единицу. Если $k \le N-1$, перейдем на шаг 3. В противном
@@ -228,17 +233,17 @@ $P(0|0) = P(0)$.
 \item Положим $k = 0$.
 \item Используя выражения фильтра Калмана, найдем:
 \[
-	\hat{x}(t_{k+1}|t_k) = F \hat{x}(t_k|t_k) + C u(t_k);
+  \hat{x}(t_{k+1}|t_k) = F \hat{x}(t_k|t_k) + C u(t_k);
 \]
 \[
-	\eps(t_{k+1}) = y(t_{k+1}) - H \hat{x} (t_{k+1}|t_k);
-	\hat{x}(t_{k+1}|t_{k+1}) = \hat{x}(t_{k+1}|t_k) + K(t_{k+1}) \eps(t_{k+1}).
+  \eps(t_{k+1}) = y(t_{k+1}) - H \hat{x} (t_{k+1}|t_k);
+  \hat{x}(t_{k+1}|t_{k+1}) = \hat{x}(t_{k+1}|t_k) + K(t_{k+1}) \eps(t_{k+1}).
 \]
 \item Найдем значение приращения логарифмической функции правдоподобия
 $\Delta_1$, соответствующее текущему значению времени:
 \[
-	\Delta_1 = \frac{1}{2} \left[ \eps(t_{k+1}) \right]^T B^{-1}(t_{k+1}) 
-	\left[ \eps(t_{k+1}) \right].
+  \Delta_1 = \frac{1}{2} \left[ \eps(t_{k+1}) \right]^T B^{-1}(t_{k+1}) 
+  \left[ \eps(t_{k+1}) \right].
 \]
 \item Положим $\chi(\theta) = \chi(\theta) + \Delta_1$.
 \item Увеличим $k$ на единицу. Если $k \le N-1$, перейдем на шаг 7.
@@ -251,15 +256,15 @@ $\Delta_1$, соответствующее текущему значению в�
 Выражение для градиента критерия имеет вид \cite{mono}:
 \begin{equation*}
 \begin{split}
-	\frac{\partial \chi(\theta)}{\partial \theta_i} = \sum\limits_{k=0}^{N-1}
-	\left[ \frac{\partial \eps(t_{k+1})}{\partial \theta_i} \right]^T
-	B^{-1}(t_{k+1}) \left[ \eps(t_{k+1}) \right] - \\
-	- \frac{1}{2}
-	\sum\limits_{k=0}^{N-1} \left[ \eps(t_{k+1}) \right]^T B^{-1}(t_{k+1})
-	\frac{\partial B(t_{k+1})}{\partial \theta_i} B^{-1}(t_{k+1}) \eps(t_{k+1}) +
-	\\ + 
-	\frac{1}{2} \sum\limits_{k=0}^{N-1} \Sp \left[ B^{-1}(t_{k+1})
-	\frac{\partial B(t_{k+1})}{\partial \theta_i} \right]. 
+  \frac{\partial \chi(\theta)}{\partial \theta_i} = \sum\limits_{k=0}^{N-1}
+  \left[ \frac{\partial \eps(t_{k+1})}{\partial \theta_i} \right]^T
+  B^{-1}(t_{k+1}) \left[ \eps(t_{k+1}) \right] - \\
+  - \frac{1}{2}
+  \sum\limits_{k=0}^{N-1} \left[ \eps(t_{k+1}) \right]^T B^{-1}(t_{k+1})
+  \frac{\partial B(t_{k+1})}{\partial \theta_i} B^{-1}(t_{k+1}) \eps(t_{k+1}) +
+  \\ + 
+  \frac{1}{2} \sum\limits_{k=0}^{N-1} \Sp \left[ B^{-1}(t_{k+1})
+  \frac{\partial B(t_{k+1})}{\partial \theta_i} \right]. 
 \end{split}
 \end{equation*}
 
@@ -273,51 +278,51 @@ C, \pd{C}{\theta_i}, R, \pd{R}{\theta_i}, G, \pd{G}{\theta_i}, \overline{x}(0),
 
 \item Положим $k = 0$; $\pd{\chi(\theta)}{\theta_i} = 0$; $P(0|0) = P(0)$;
 $\pd{P(0|0)}{\theta_i} = \pd{P(0)}{\theta_i}$, $i = 1, 2, \ldots, s$;
-$\Delta_2'$ = 0.
+$\Delta_2' = 0$.
 
 \item Используем выражения фильтра Калмана, вычислим:
 \[
-	P(t_{k+1}|t_k) = F P(t_k|t_k) F^T + GQG^T;
+  P(t_{k+1}|t_k) = F P(t_k|t_k) F^T + GQG^T;
 \]
 \[
-	B(t_{k+1}) = H P(t_{k+1}|t_k) H^T + R;
+  B(t_{k+1}) = H P(t_{k+1}|t_k) H^T + R;
 \]
 \[
-	K(t_{k+1}) = P(t_{k+1}|t_k) H^T B^{-1}(t_{k+1});
+  K(t_{k+1}) = P(t_{k+1}|t_k) H^T B^{-1}(t_{k+1});
 \]
 \[
-	P(t_{k+1}|t_{k+1}) = \left[ I - K(t_{k+1}) H \right] P(t_{k+1}|t_k)
+  P(t_{k+1}|t_{k+1}) = \left[ I - K(t_{k+1}) H \right] P(t_{k+1}|t_k)
 \]
 \item Найдем $\pd{P(t_{k+1}|t_k)}{\theta_i}$, $\pd{B(t_{k+1})}{\theta_i}$,
 $\pd{K(t_{k+1})}{\theta_i}$, $\pd{P(t_{k+1}|t_{k+1})}{\theta_i}$ для всех
 $i = 1, 2, \ldots, s$ по формулам, вытекающим из уравнений фильтра Калмана:
 \begin{equation*}
 \begin{split}
-	\pd{P(t_{k+1}|t_k)}{\theta_i} = \pd{F}{\theta_i} P(t_k|t_k) F^T + F
-	\pd{P(t_k|t_k)}{\theta_i} F^T + F P(t_k|t_k) \pd{F^T}{\theta_i} + \\ +
-	\pd{G}{\theta_i} Q G^T + G \pd{Q}{\theta_i} G^T + G Q \pd{G^T}{\theta_i};
+  \pd{P(t_{k+1}|t_k)}{\theta_i} = \pd{F}{\theta_i} P(t_k|t_k) F^T + F
+  \pd{P(t_k|t_k)}{\theta_i} F^T + F P(t_k|t_k) \pd{F^T}{\theta_i} + \\ +
+  \pd{G}{\theta_i} Q G^T + G \pd{Q}{\theta_i} G^T + G Q \pd{G^T}{\theta_i};
 \end{split}
 \end{equation*}
 
 
 
 \[
-	\pdpk{B(t_{k+1})} = \pdpk{H} P(t_{k+1}|t_k) H^T + H \pdpk{P(\pred)} H^T +
-	H P(\pred) \pdpk{H^T} + \pdpk{R}; 
+  \pdpk{B(t_{k+1})} = \pdpk{H} P(t_{k+1}|t_k) H^T + H \pdpk{P(\pred)} H^T +
+  H P(\pred) \pdpk{H^T} + \pdpk{R}; 
 \]
 
 
 \begin{equation*}
 \begin{split}
-	\pdpk{K(\fut)} = \left[ \pdpk{P(\pred)} H^T + P(\pred) \pdpk{H^T} - \right.
-	\\ \left. -
-	P(\pred) H^T \inv{B}(\fut) \pdpk{B(\fut)} \right] \inv{B}(\fut); \end{split}
+  \pdpk{K(\fut)} = \left[ \pdpk{P(\pred)} H^T + P(\pred) \pdpk{H^T} - \right.
+  \\ \left. -
+  P(\pred) H^T \inv{B}(\fut) \pdpk{B(\fut)} \right] \inv{B}(\fut); \end{split}
 \end{equation*}
 
 \begin{equation*}
 \begin{split}
-	\pdpk{P(\estfut)} = \left[ I - K(\fut) H \right] \pdpk{P(\pred)} - \\ -
-	\left[ \pdpk{K(\fut)} H + K(\fut) \pdpk{H} \right] P(\pred).
+  \pdpk{P(\estfut)} = \left[ I - K(\fut) H \right] \pdpk{P(\pred)} - \\ -
+  \left[ \pdpk{K(\fut)} H + K(\fut) \pdpk{H} \right] P(\pred).
 \end{split}
 \end{equation*}
 
@@ -331,37 +336,37 @@ $i = 1, 2, \ldots, s$ по формулам, вытекающим из урав�
 
 \item Используя выражения фильтра Калмана, найдем:
 \[
-	\hat{x}(\pred) = F \hat{x}(\est) + C u(t_k);
+  \hat{x}(\pred) = F \hat{x}(\est) + C u(t_k);
 \]
 \[
-	\eps(\fut) = y(\fut) - H \hat{x}(\pred);
+  \eps(\fut) = y(\fut) - H \hat{x}(\pred);
 \]
 \[
-	\hat{x}(\estfut) = \hat{x}(\pred) + K(\fut) \eps(\fut).
+  \hat{x}(\estfut) = \hat{x}(\pred) + K(\fut) \eps(\fut).
 \]
 
 \item Найдем $\pdpk{\hat{x}(\pred)},\ \pdpk{\eps(\fut)},\
 \pdpk{\hat{x}(\estfut)}$ для всех $i = 1, 2, \ldots, s$ по формулам, вытакающим
 из уравнений фильтра Калмана:
 \[
-	\pdpk{\hat{x}(\pred)} = \pdpk{F} \hat{x}(\est) + F \pdpk{\hat{x}(\est)} +
-	\pdpk{C} u(t_k);
+  \pdpk{\hat{x}(\pred)} = \pdpk{F} \hat{x}(\est) + F \pdpk{\hat{x}(\est)} +
+  \pdpk{C} u(t_k);
 \]
 \[
-	\pdpk{\eps(\fut)} = -\pdpk{H} \hat{x}(\pred) - H \pdpk{\hat{x}(\pred)};
+  \pdpk{\eps(\fut)} = -\pdpk{H} \hat{x}(\pred) - H \pdpk{\hat{x}(\pred)};
 \]
 \[
-	\pdpk{\hat{x}(\estfut)} = \pdpk{\hat{x}(\pred)} + \pdpk{K(\fut)} \eps(\fut) +
-	K(\fut) \pdpk{\eps(\fut)}.
+  \pdpk{\hat{x}(\estfut)} = \pdpk{\hat{x}(\pred)} + \pdpk{K(\fut)} \eps(\fut) +
+  K(\fut) \pdpk{\eps(\fut)}.
 \]
 
 \item Найдем значение приращения градиента $\Delta_1'$, соответствующее
 текущему значению времени:
 \begin{equation*}
 \begin{split}
-	\Delta_1' = \left[ \pdpk{\eps(\fut)} \right]^T \inv{B}(\fut)
-	\left[ \eps(\fut) \right] - \\ - \frac{1}{2} \left[ \eps(\fut) \right]^T
-	\inv{B}(\fut) \pdpk{B(\fut)} \inv{B}(\fut) \eps(\fut).
+  \Delta_1' = \left[ \pdpk{\eps(\fut)} \right]^T \inv{B}(\fut)
+  \left[ \eps(\fut) \right] - \\ - \frac{1}{2} \left[ \eps(\fut) \right]^T
+  \inv{B}(\fut) \pdpk{B(\fut)} \inv{B}(\fut) \eps(\fut).
 \end{split}
 \end{equation*}
 
@@ -376,46 +381,18 @@ $i = 1, 2, \ldots, s$ и закончим процесс.
 
 \end{enumerate}
 
+% imports
+\begin{pythontexcustomcode}{py}
+import numpy as np
+import dill as pkl
+from model.model import Model
+import pylatex
+\end{pythontexcustomcode}
+
 \section{Примеры решений}
 
-% TODO: introduce counter
-% TODO: print numpy arrays instead of matrices
-\subsection{Пример 1: параметры в матрице перехода $F$}
-\[
-	\begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} =
-	\begin{pmatrix} \theta_1 & 0 \\ 0 & \theta_2 \end{pmatrix}
-	\begin{pmatrix} x_1(t_k) \\ x_2(t_k) \end{pmatrix}
-	+ \begin{pmatrix} u_1(t_k) \\ u_2(t_k) \end{pmatrix}
-	+ \begin{pmatrix} w_1(t_k) \\ w_2(t_k) \end{pmatrix}
-\]
-\[
-	\begin{pmatrix} y_1(\fut) \\ y_2(\fut) \end{pmatrix} =
-	\begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} +
-	\begin{pmatrix} v_1(\fut) \\ v_2(\fut) \end{pmatrix}
-\]
-\[
-	\overline{x}(0) = \begin{pmatrix} 0 \\ 0 \end{pmatrix},
-	P(0) = \begin{pmatrix} 0.01 & 0 \\ 0 & 0.01 \end{pmatrix}
-\]
-
-\subsection{Пример 2: параметры в матрице управления $C$}
-
-\subsection{Пример 3: параметры в матрице наблюдения $H$}
-
-\subsection{Пример 4: параметры в матрице $Q$}
-
-\subsection{Пример 5: параметры в матрице $R$}
-
-построить поверхность отражающую зависимость критерия от тета
-
-выводы к каждому примеру
-
-здесь начинается первый кусок кода
-
-\renewcommand{\baselinestretch}{1}
-\begin{pyconsole}
-from model.model import *
-
+% define, create model 1
+\begin{pycode}[model1]
 F = lambda th: [[th[0], 0.],
                 [0., th[1]]]
 
@@ -431,47 +408,244 @@ H = lambda th: [[1.0, 0.],
 x0_m = lambda th: [[0.],
                    [0.]]
 
-x0_c = lambda th: [[1e-3, 0.],
-                   [0., 1e-3]]
-w_c = x0_c
-v_c = x0_c
+x0_c = lambda th: [[0.1, 0.],
+                   [0., 0.1]]
 
-th = [0.5, 0.5]
+w_c = lambda th: [[0.05, 0.],
+                  [0., 0.05]]
 
-m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th)
-\end{pyconsole}
-\renewcommand{\baselinestretch}{1.5}
+v_c = lambda th: [[0.15, 0.],
+                  [0., 0.15]]
 
-\newpage
+th_true = [0.5, 0.5]
 
-здесь начинается второй кусок кода
-\begin{pyconsole}
-u = np.ones([2, 100])
+# TODO: check if there are extra components in 'th'
+m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th_true)
+\end{pycode}
+
+% TODO: introduce counter
+% TODO: print numpy arrays instead of matrices
+\subsection{Пример 1: параметры в матрице перехода $F$}
+\[
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} \theta_1 & 0 \\ 0 & \theta_2 \end{pmatrix}
+  \begin{pmatrix} x_1(t_k) \\ x_2(t_k) \end{pmatrix}
+  + \begin{pmatrix} u_1(t_k) \\ u_2(t_k) \end{pmatrix}
+  + \begin{pmatrix} w_1(t_k) \\ w_2(t_k) \end{pmatrix}
+\]
+\[
+  \begin{pmatrix} y_1(\fut) \\ y_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} +
+  \begin{pmatrix} v_1(\fut) \\ v_2(\fut) \end{pmatrix}
+\]
+\[
+  \overline{x}(0) = \begin{pmatrix} 0 \\ 0 \end{pmatrix},\
+  P(0) = \begin{pmatrix} 0.1 & 0 \\ 0 & 0.1 \end{pmatrix}
+  Q = \begin{pmatrix} 0.05 & 0 \\ 0 & 0.05 \end{pmatrix},\
+  R = \begin{pmatrix} 0.15 & 0 \\ 0 & 0.15 \end{pmatrix}
+\]
+
+Истинные значения параметров
+$\theta_{true} = \begin{pmatrix} 0.5 & 0.5 \end{pmatrix}$ \\
+
+\indent Управляющее воздействие --- дискретная ступенчатая функция
+\[
+  u(t_k) = \begin{pmatrix} 10 \\ 10 \end{pmatrix},\ k = 0, 1, 2, \ldots, N-1
+\]
+
+Область оценивания: $0.1 \le \theta_i \le 0.9$, $i = 1, \ldots, s$.
+
+% simulate response, fit model, dump results
+\begin{pycode}[model1]
+N = 100
+u = np.ones([2, N])
 u = u * 10
 
 # run simulation
-rez = m.sim(u)
+rez = m.sim(u)  # TODO: return dictionary or named tuple
 y = rez[1]
-L = m.lik(u, y)
-print(L)
-dL = m.dL(u, y)
-print(dL)
-th0 = [0.3, 0.8]
-# print('identificating')
-th_e = m.mle_fit(th0, u, y) 
-print(th_e)
-\end{pyconsole}
 
-\newpage
+yhat_true = m.yhat(u=u, y=y)
+
+th_init = [0.1, 0.9]
+
+loss_true = m.lik(u=u, y=y)
+loss_init = m.lik(u=u, y=y, th=th_init)
+
+rez = m.mle_fit(th=th_init, y=y, u=u)
+
+th_e = rez['x']
+loss_e = rez['fun']
+
+yhat_e = m.yhat(u=u, y=y, th=th_e)
+
+data = {'loss_init': loss_init,
+        'loss_true': loss_true,
+        'th_e': th_e,
+        'loss_e': loss_e,
+        'th_true': th_true,
+        'yhat_true': yhat_true,
+        'yhat_e': yhat_e}
+
+with open('./data/data1.pkl', 'wb') as f:
+  pkl.dump(data, f)
+\end{pycode}
+
+% load results data and print their values below
+\begin{pycode}
+filepath = './data/data1.pkl'
+pytex.add_dependencies(filepath)
+with open(filepath, 'rb') as f:
+  data = pkl.load(f)
+
+loss_true = data['loss_true']
+loss_init = data['loss_init']
+
+loss_e = data['loss_e']
+
+th_e = data['th_e']
+th_e_m = np.matrix(th_e)
+th_e = np.around(th_e_m, 6)
+th_e = pylatex.Matrix(th_e, mtype='b')
+th_e = th_e.dumps()
+
+th_t = data['th_true']
+th_t = np.matrix(th_t)
+
+rtol = np.linalg.norm(th_t - th_e_m) / np.linalg.norm(th_t)
+rtol = "%.6f" % (rtol * 100)
+
+yhat_t = data['yhat_true']
+yhat_e = data['yhat_e']
+rtoly = np.linalg.norm(yhat_t - yhat_e) / np.linalg.norm(yhat_t)
+rtoly = "%.6f" % (rtoly * 100)
+\end{pycode}
+
+\subsubsection{Оценивание параметров: результаты}
+
+Значение критерия при истинных значениях параметров
+\[
+L(\theta_{true}) = \pyc{print("%.3f" % loss_true)}.
+\]
+
+Начальное приближение по параметрам
+\[ % TODO: make reproducible
+\theta_{init} = \begin{bmatrix} 0.1 & 0.9 \end{bmatrix}.
+\]
+
+Значение критерия при начальном приближении
+\[
+L(\theta_{init}) = \pyc{print("%.3f" % loss_init)}.
+\]
+
+Полученные оценки параметров
+\[
+\hat{\theta} = \pyc{print(th_e)}
+\]
+
+Значение критерия 
+\[
+L(\hat{\theta}) = \pyc{print("%.3f" % loss_e)}
+\]
+
+\newcommand{\rtol}[1]{\frac{||#1_{true} - \hat{#1}||}{||#1_{true}||}}
+
+Относительная погрешность в пространстве параметров:
+\[
+\rtol{\theta} = \pyc{print(rtol)} \%
+\]
+
+Относительная погрешность в пространстве откликов:
+\[
+\rtol{y} = \pyc{print(rtoly)} \%
+\]
+
+График поверхности, отражающей зависимость критерия от параметров представлен
+ниже.
+
+% calc for plot
+\begin{pycode}[model1]
+def f(th0, th1, u, y):
+    return m.lik(th=[th0, th1], u=u, y=y)
+
+vf = np.vectorize(f, excluded={'u', 'y'})
+
+X = np.linspace(.1, .9, num=25)
+Y = X
+X, Y = np.meshgrid(X, Y)
+
+Z = vf(X, Y, u=u, y=y)
+
+with open('./data/plot1.pkl', 'wb') as f:
+  pkl.dump([X, Y, Z], f)
+\end{pycode}
+
+% save figure
+\begin{pycode}
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+
+filepath = './data/plot1.pkl'
+pytex.add_dependencies(filepath)
+with open(filepath, 'rb') as f:
+    X, Y, Z = pkl.load(f)
+
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+
+surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
+                       linewidth=0, antialiased=False)
+
+plt.savefig('figure/L1.pdf', bbox_inches='tight')
+\end{pycode}
+
+% include figure
+\begin{pycode}
+pytex.add_dependencies('./figure/L1.pdf')
+print(r'\begin{figure}[H]')
+print(r'\includegraphics[width=\textwidth]{L1.pdf}')
+print(r'\caption{Поверхность, отражающая зависимость критерия от параметров}')
+print(r'\end{figure}')
+\end{pycode}
+Вывод: поверхность выпуклая, виден выраженный минимум.
+
+\subsection{Пример 2: параметры в матрице управления $C$}
+\[
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} x_1(t_k) \\ x_2(t_k) \end{pmatrix} +
+  \begin{pmatrix} \theta_1 & 0 \\ 0 & \theta_2 \end{pmatrix}
+  \begin{pmatrix} u_1(t_k) \\ u_2(t_k) \end{pmatrix}
+  + \begin{pmatrix} w_1(t_k) \\ w_2(t_k) \end{pmatrix}
+\]
+
+Истинные значения параметров
+$\theta_{true} = \begin{pmatrix} 1 & 1 \end{pmatrix}$ \\
+
+Остальные компоненты модели остаются такими же, как в примере 1.
+
+\subsubsection{Оценивание параметров: результаты}
+
+
+
+\subsection{Пример 3: параметры в матрице наблюдения $H$}
+
+\subsection{Пример 4: параметры в матрице $Q$}
+
+\subsection{Пример 5: параметры в матрице $R$}
+
+построить поверхность отражающую зависимость критерия от тета
+
+выводы к каждому примеру
 
 \begin{thebibliography}{9}
 
 \begin{sloppypar}
 
 \bibitem{mono} Активная параметрическая идентификация стохастических линейных
-	систем: монография / В.И. Денисов, В.М. Чубич, О.С. Черникова, Д.И. Бобылева.
-		--- Новосибирск : Изд-во НГТУ, 2009. --- 192 с.
-		(Серия <<Монографии НГТУ>>).
+  систем: монография / В.И. Денисов, В.М. Чубич, О.С. Черникова, Д.И. Бобылева.
+    --- Новосибирск : Изд-во НГТУ, 2009. --- 192 с.
+    (Серия <<Монографии НГТУ>>).
 
 \end{sloppypar}
 
@@ -483,6 +657,7 @@ print(th_e)
 
 \section{Исходные тексты программ}
 
+% TODO: make pycode, within it print pyverbatim, read source file and print it
 \begin{pyverbatim}[][fontsize=\small]
 
 import math

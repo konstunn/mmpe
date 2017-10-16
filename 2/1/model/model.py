@@ -1,10 +1,13 @@
 
+import os
 import math
 import tensorflow as tf
 import control
 import numpy as np
 from tensorflow.contrib.distributions import MultivariateNormalFullCovariance
 import scipy
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 class Model(object):
@@ -17,6 +20,7 @@ class Model(object):
         except for 'th' itself (of course)
         """
 
+        # TODO: check if there are extra components in 'th'
         # TODO: evaluate and cast everything to numpy matrices first
         # TODO: cast floats, ints to numpy matrices
         # TODO: allow both constant matrices and callables
@@ -254,10 +258,10 @@ class Model(object):
 
             I = tf.eye(n, n, dtype=tf.float64)
 
-            def lik_loop_cond(k, P, S, t, u, x, y):
+            def lik_loop_cond(k, P, S, t, u, x, y, yhat):
                 return tf.less(k, N-1)
 
-            def lik_loop_body(k, P, S, t, u, x, y):
+            def lik_loop_body(k, P, S, t, u, x, y, yhat):
 
                 # TODO: this should be function of time
                 u_t_k = tf.slice(u, [0, k], [r, 1])
@@ -284,7 +288,11 @@ class Model(object):
 
                 P = covariance_predict(P)
 
-                E = y_k - tf.matmul(H, x)
+                yh = H @ x
+
+                yhat = tf.concat([yhat, yh], axis=1)
+
+                E = y_k - yh
 
                 B = tf.matmul(H @ P, H, transpose_b=True) + R
                 invB = tf.matrix_inverse(B)
@@ -304,16 +312,23 @@ class Model(object):
 
                 k = k + 1
 
-                return k, P, S, t, u, x, y
+                return k, P, S, t, u, x, y, yhat
 
             k = tf.constant(0, name='k')
             P = P_0
             S = tf.constant(0.0, dtype=tf.float64, shape=[1, 1], name='S')
             x = x0_mean
+            yhat = H @ x
+
+            shape_invariants = [k.get_shape(), P.get_shape(), S.get_shape(),
+                                t.get_shape(), u.get_shape(), x.get_shape(),
+                                y.get_shape(), tf.TensorShape([m, None])]
 
             # TODO: make a named tuple of named list
             lik_loop = tf.while_loop(lik_loop_cond, lik_loop_body,
-                                     [k, P, S, t, u, x, y], name='lik_loop')
+                                     [k, P, S, t, u, x, y, yhat],
+                                     shape_invariants,
+                                     name='lik_loop')
 
             dS = tf.gradients(lik_loop[2], th)
 
@@ -389,6 +404,35 @@ class Model(object):
 
         return rez
 
+    def yhat(self, u, y, th=None):
+        if th is None:
+            th = self.__th
+
+        k = u.shape[1]
+        t = np.linspace(0, k-1, k)
+
+        # to numpy 1D array
+        th = np.array(th).squeeze()
+
+        # self.__validate(th)
+        g = self.__lik_graph
+
+        if t.shape[0] != u.shape[1]:
+            raise Exception('''t.shape[0] != u.shape[1]''')
+
+        # run lik graph
+        with tf.Session(graph=g) as sess:
+            t_ph = g.get_tensor_by_name('t:0')
+            th_ph = g.get_tensor_by_name('th:0')
+            u_ph = g.get_tensor_by_name('u:0')
+            y_ph = g.get_tensor_by_name('y:0')
+            rez = sess.run(self.__lik_loop_op, {th_ph: th, t_ph: t, u_ph: u,
+                                                y_ph: y})
+
+        # TODO: make rez namedtuple
+        yhat = rez[-1]
+        return yhat
+
     def lik(self, u, y, th=None):
 
         # hack continuous to discrete system
@@ -423,7 +467,7 @@ class Model(object):
         S = rez[2]
         S = S + N*m * 0.5 + np.log(2*math.pi)
 
-        return S
+        return np.squeeze(S)
 
     def __L(self, th, u, y):
         return self.lik(u, y, th)
@@ -458,9 +502,10 @@ class Model(object):
 
         return rez[0]
 
+    # TODO: return results as a named tuple or dictionary
     def mle_fit(self, th, u, y):
         # TODO: call slsqp
         th0 = th
-        th = scipy.optimize.minimize(self.__L, th0, args=(u, y),
-                                     jac=self.__dL, options={'disp': True})
-        return th
+        rez = scipy.optimize.minimize(self.__L, th0, args=(u, y),
+                                      jac=self.__dL)
+        return rez
