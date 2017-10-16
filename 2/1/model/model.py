@@ -503,9 +503,10 @@ class Model(object):
         return rez[0]
 
     # TODO: return results as a named tuple or dictionary
-    def mle_fit(self, th, u, y):
+    # TODO: bounds
+    def mle_fit(self, th, u, y, bounds=None):
         # TODO: call slsqp
         th0 = th
         rez = scipy.optimize.minimize(self.__L, th0, args=(u, y),
-                                      jac=self.__dL)
+                                      bounds=bounds, jac=self.__dL)
         return rez
