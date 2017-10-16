@@ -387,6 +387,25 @@ import numpy as np
 import dill as pkl
 from model.model import Model
 import pylatex
+
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+
+def surf_plot_save(X, Y, Z, filepath):
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+
+    surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
+                           linewidth=0, antialiased=False)
+
+    ax.set_xlabel(r'$\theta_1$')
+    ax.set_ylabel(r'$\theta_2$')
+    ax.set_zlabel(r'$L(\theta_1, \theta_2)$')
+
+    ax.zaxis.get_major_formatter().set_powerlimits((0, 1))
+
+    plt.savefig(filepath, bbox_inches='tight')
 \end{pythontexcustomcode}
 
 \section{Примеры решений}
@@ -440,7 +459,7 @@ m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th_true)
 \]
 \[
   \overline{x}(0) = \begin{pmatrix} 0 \\ 0 \end{pmatrix},\
-  P(0) = \begin{pmatrix} 0.1 & 0 \\ 0 & 0.1 \end{pmatrix}
+  P(0) = \begin{pmatrix} 0.1 & 0 \\ 0 & 0.1 \end{pmatrix},\
   Q = \begin{pmatrix} 0.05 & 0 \\ 0 & 0.05 \end{pmatrix},\
   R = \begin{pmatrix} 0.15 & 0 \\ 0 & 0.15 \end{pmatrix}
 \]
@@ -496,7 +515,7 @@ with open('./data/data1.pkl', 'wb') as f:
 filepath = './data/data1.pkl'
 pytex.add_dependencies(filepath)
 with open(filepath, 'rb') as f:
-  data = pkl.load(f)
+    data = pkl.load(f)
 
 loss_true = data['loss_true']
 loss_init = data['loss_init']
@@ -561,7 +580,7 @@ L(\hat{\theta}) = \pyc{print("%.3f" % loss_e)}
 \]
 
 График поверхности, отражающей зависимость критерия от параметров представлен
-ниже.
+далее.
 
 % calc for plot
 \begin{pycode}[model1]
@@ -577,27 +596,17 @@ X, Y = np.meshgrid(X, Y)
 Z = vf(X, Y, u=u, y=y)
 
 with open('./data/plot1.pkl', 'wb') as f:
-  pkl.dump([X, Y, Z], f)
+    pkl.dump([X, Y, Z], f)
 \end{pycode}
 
 % save figure
-\begin{pycode}
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
-
-filepath = './data/plot1.pkl'
-pytex.add_dependencies(filepath)
-with open(filepath, 'rb') as f:
+\begin{pycode}[plot1]
+depfile = './data/plot1.pkl'
+pytex.add_dependencies(depfile)
+with open(depfile, 'rb') as f:
     X, Y, Z = pkl.load(f)
 
-fig = plt.figure()
-ax = fig.gca(projection='3d')
-
-surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
-                       linewidth=0, antialiased=False)
-
-plt.savefig('figure/L1.pdf', bbox_inches='tight')
+surf_plot_save(X, Y, Z, 'figure/L1.pdf')
 \end{pycode}
 
 % include figure
@@ -610,7 +619,40 @@ print(r'\end{figure}')
 \end{pycode}
 Вывод: поверхность выпуклая, виден выраженный минимум.
 
+\newpage % TODO: DO NOT REPEAT YOURSELF
 \subsection{Пример 2: параметры в матрице управления $C$}
+
+% define, create model 2
+\begin{pycode}[model2]
+F = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+C = lambda th: [[th[0], 0.],
+                [0., th[1]]]
+
+G = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+H = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+x0_m = lambda th: [[0.],
+                   [0.]]
+
+x0_c = lambda th: [[0.1, 0.],
+                   [0., 0.1]]
+
+w_c = lambda th: [[0.05, 0.],
+                  [0., 0.05]]
+
+v_c = lambda th: [[0.15, 0.],
+                  [0., 0.15]]
+
+th_true = [1, 1]
+
+m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th_true)
+\end{pycode}
+
 \[
   \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} =
   \begin{pmatrix} x_1(t_k) \\ x_2(t_k) \end{pmatrix} +
@@ -618,19 +660,360 @@ print(r'\end{figure}')
   \begin{pmatrix} u_1(t_k) \\ u_2(t_k) \end{pmatrix}
   + \begin{pmatrix} w_1(t_k) \\ w_2(t_k) \end{pmatrix}
 \]
+\[
+  \begin{pmatrix} y_1(\fut) \\ y_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} +
+  \begin{pmatrix} v_1(\fut) \\ v_2(\fut) \end{pmatrix}
+\]
 
 Истинные значения параметров
 $\theta_{true} = \begin{pmatrix} 1 & 1 \end{pmatrix}$ \\
 
-Остальные компоненты модели остаются такими же, как в примере 1.
+Остальные условия остаются такими же, как в примере 1.
 
 \subsubsection{Оценивание параметров: результаты}
 
+% simulate response, fit model, dump results
+\begin{pycode}[model2]
+N = 100
+u = np.ones([2, N])
+u = u * 10
 
+# run simulation
+rez = m.sim(u)  # TODO: return dictionary or named tuple
+y = rez[1]
 
+yhat_true = m.yhat(u=u, y=y)
+
+th_init = [0.1, 0.9]
+
+loss_true = m.lik(u=u, y=y)
+loss_init = m.lik(u=u, y=y, th=th_init)
+
+rez = m.mle_fit(th=th_init, y=y, u=u)
+
+th_e = rez['x']
+loss_e = rez['fun']
+
+yhat_e = m.yhat(u=u, y=y, th=th_e)
+
+data = {'loss_init': loss_init,
+        'loss_true': loss_true,
+        'th_e': th_e,
+        'loss_e': loss_e,
+        'th_true': th_true,
+        'yhat_true': yhat_true,
+        'yhat_e': yhat_e}
+
+with open('./data/data2.pkl', 'wb') as f:
+    pkl.dump(data, f)
+\end{pycode}
+
+% load results data and print their values below
+\begin{pycode}
+filepath = './data/data2.pkl'
+pytex.add_dependencies(filepath)
+with open(filepath, 'rb') as f:
+  data = pkl.load(f)
+
+loss_true = data['loss_true']
+loss_init = data['loss_init']
+
+loss_e = data['loss_e']
+
+th_e = data['th_e']
+th_e_m = np.matrix(th_e)
+th_e = np.around(th_e_m, 6)
+th_e = pylatex.Matrix(th_e, mtype='b')
+th_e = th_e.dumps()
+
+th_t = data['th_true']
+th_t = np.matrix(th_t)
+
+rtol = np.linalg.norm(th_t - th_e_m) / np.linalg.norm(th_t)
+rtol = "%.6f" % (rtol * 100)
+
+yhat_t = data['yhat_true']
+yhat_e = data['yhat_e']
+rtoly = np.linalg.norm(yhat_t - yhat_e) / np.linalg.norm(yhat_t)
+rtoly = "%.6f" % (rtoly * 100)
+\end{pycode}
+
+Значение критерия при истинных значениях параметров
+\[
+L(\theta_{true}) = \pyc{print("%.3f" % loss_true)}.
+\]
+
+Начальное приближение по параметрам
+\[ % TODO: make reproducible
+\theta_{init} = \begin{bmatrix} 0.1 & 0.9 \end{bmatrix}.
+\]
+
+Значение критерия при начальном приближении
+\[
+L(\theta_{init}) = \pyc{print("%.3f" % loss_init)}.
+\]
+
+Полученные оценки параметров
+\[
+\hat{\theta} = \pyc{print(th_e)}
+\]
+
+Значение критерия 
+\[
+L(\hat{\theta}) = \pyc{print("%.3f" % loss_e)}
+\]
+
+Относительная погрешность в пространстве параметров:
+\[
+\rtol{\theta} = \pyc{print(rtol)} \%
+\]
+
+Относительная погрешность в пространстве откликов:
+\[
+\rtol{y} = \pyc{print(rtoly)} \%
+\]
+
+График поверхности, отражающей зависимость критерия от параметров представлен
+далее.
+
+% calc for plot
+\begin{pycode}[model2]
+def f(th0, th1, u, y):
+    return m.lik(th=[th0, th1], u=u, y=y)
+
+vf = np.vectorize(f, excluded={'u', 'y'})
+
+X = np.linspace(0.5, 1.5, num=25)
+Y = X
+X, Y = np.meshgrid(X, Y)
+
+Z = vf(X, Y, u=u, y=y)
+
+with open('./data/plot2.pkl', 'wb') as f:
+    pkl.dump([X, Y, Z], f)
+\end{pycode}
+
+% save figure
+\begin{pycode}[plot2]
+depfile = './data/plot2.pkl'
+pytex.add_dependencies(depfile)
+with open(depfile, 'rb') as f:
+    X, Y, Z = pkl.load(f)
+
+surf_plot_save(X, Y, Z, 'figure/L2.pdf')
+\end{pycode}
+
+% include figure
+\begin{pycode}
+pytex.add_dependencies('./figure/L2.pdf')
+print(r'\begin{figure}[H]')
+print(r'\includegraphics[width=\textwidth]{L2.pdf}')
+print(r'\caption{Поверхность, отражающая зависимость критерия от параметров}')
+print(r'\end{figure}')
+\end{pycode}
+
+Вывод: поверхность выпуклая, минимум выраженный, но менее, чем в примере 1.
+Это видно при сравнении масштабов осей $Z$ графика в примере 1 и графика в данном
+примере.
+
+\newpage
 \subsection{Пример 3: параметры в матрице наблюдения $H$}
 
+% define, create model 3
+\begin{pycode}[model3]
+F = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+C = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+G = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+H = lambda th: [[th[0], 0.],
+                [0., th[1]]]
+
+x0_m = lambda th: [[0.],
+                   [0.]]
+
+x0_c = lambda th: [[0.1, 0.],
+                   [0., 0.1]]
+
+w_c = lambda th: [[0.05, 0.],
+                  [0., 0.05]]
+
+v_c = lambda th: [[0.15, 0.],
+                  [0., 0.15]]
+
+th_true = [1, 1]
+
+m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th_true)
+\end{pycode}
+
+\[
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} x_1(t_k) \\ x_2(t_k) \end{pmatrix} +
+  \begin{pmatrix} u_1(t_k) \\ u_2(t_k) \end{pmatrix}
+  + \begin{pmatrix} w_1(t_k) \\ w_2(t_k) \end{pmatrix}
+\]
+\[
+  \begin{pmatrix} y_1(\fut) \\ y_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} \theta_1 & 0 \\ 0 & \theta_2 \end{pmatrix}
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} +
+  \begin{pmatrix} v_1(\fut) \\ v_2(\fut) \end{pmatrix}
+\]
+
+Истинные значения параметров
+$\theta_{true} = \begin{pmatrix} 1 & 1 \end{pmatrix}$ \\
+
+Остальные условия остаются такими же, как в примере 1.
+
+% simulate response, fit model, dump results
+\begin{pycode}[model3]
+N = 100
+u = np.ones([2, N])
+u = u * 10
+
+# run simulation
+rez = m.sim(u)  # TODO: return dictionary or named tuple
+y = rez[1]
+
+yhat_true = m.yhat(u=u, y=y)
+
+th_init = [0.1, 0.9]
+
+loss_true = m.lik(u=u, y=y)
+loss_init = m.lik(u=u, y=y, th=th_init)
+
+rez = m.mle_fit(th=th_init, y=y, u=u)
+
+th_e = rez['x']
+loss_e = rez['fun']
+
+yhat_e = m.yhat(u=u, y=y, th=th_e)
+
+data = {'loss_init': loss_init,
+        'loss_true': loss_true,
+        'th_e': th_e,
+        'loss_e': loss_e,
+        'th_true': th_true,
+        'yhat_true': yhat_true,
+        'yhat_e': yhat_e}
+
+with open('./data/data3.pkl', 'wb') as f:
+    pkl.dump(data, f)
+\end{pycode}
+
+% load results data and print their values below
+\begin{pycode}
+filepath = './data/data3.pkl'
+pytex.add_dependencies(filepath)
+with open(filepath, 'rb') as f:
+  data = pkl.load(f)
+
+loss_true = data['loss_true']
+loss_init = data['loss_init']
+
+loss_e = data['loss_e']
+
+th_e = data['th_e']
+th_e_m = np.matrix(th_e)
+th_e = np.around(th_e_m, 6)
+th_e = pylatex.Matrix(th_e, mtype='b')
+th_e = th_e.dumps()
+
+th_t = data['th_true']
+th_t = np.matrix(th_t)
+
+rtol = np.linalg.norm(th_t - th_e_m) / np.linalg.norm(th_t)
+rtol = "%.6f" % (rtol * 100)
+
+yhat_t = data['yhat_true']
+yhat_e = data['yhat_e']
+rtoly = np.linalg.norm(yhat_t - yhat_e) / np.linalg.norm(yhat_t)
+rtoly = "%.6f" % (rtoly * 100)
+\end{pycode}
+
+Значение критерия при истинных значениях параметров
+\[
+L(\theta_{true}) = \pyc{print("%.3f" % loss_true)}.
+\]
+
+Начальное приближение по параметрам
+\[ % TODO: make reproducible
+\theta_{init} = \begin{bmatrix} 0.1 & 0.9 \end{bmatrix}.
+\]
+
+Значение критерия при начальном приближении
+\[
+L(\theta_{init}) = \pyc{print("%.3f" % loss_init)}.
+\]
+
+Полученные оценки параметров
+\[
+\hat{\theta} = \pyc{print(th_e)}
+\]
+
+Значение критерия 
+\[
+L(\hat{\theta}) = \pyc{print("%.3f" % loss_e)}
+\]
+
+Относительная погрешность в пространстве параметров:
+\[
+\rtol{\theta} = \pyc{print(rtol)} \%
+\]
+
+Относительная погрешность в пространстве откликов:
+\[
+\rtol{y} = \pyc{print(rtoly)} \%
+\]
+
+График поверхности, отражающей зависимость критерия от параметров представлен
+далее.
+
+% calc for plot
+\begin{pycode}[model3]
+def f(th0, th1, u, y):
+    return m.lik(th=[th0, th1], u=u, y=y)
+
+vf = np.vectorize(f, excluded={'u', 'y'})
+
+X = np.linspace(0.5, 2.0, num=25)
+Y = X
+X, Y = np.meshgrid(X, Y)
+
+Z = vf(X, Y, u=u, y=y)
+
+with open('./data/plot3.pkl', 'wb') as f:
+    pkl.dump([X, Y, Z], f)
+\end{pycode}
+
+% save figure
+\begin{pycode}[plot3]
+depfile = './data/plot3.pkl'
+pytex.add_dependencies(depfile)
+with open(depfile, 'rb') as f:
+    X, Y, Z = pkl.load(f)
+
+surf_plot_save(X, Y, Z, 'figure/L3.pdf')
+\end{pycode}
+
+% include figure
+\begin{pycode}
+pytex.add_dependencies('./figure/L3.pdf')
+print(r'\begin{figure}[H]')
+print(r'\includegraphics[width=\textwidth]{L3.pdf}')
+print(r'\caption{Поверхность, отражающая зависимость критерия от параметров}')
+print(r'\end{figure}')
+\end{pycode}
+
+Вывод: поверхность выпуклая, минимум выраженный.
+
 \subsection{Пример 4: параметры в матрице $Q$}
+
+
 
 \subsection{Пример 5: параметры в матрице $R$}
 
