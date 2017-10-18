@@ -4,6 +4,7 @@ import autograd.numpy as np
 import autograd
 import scipy
 import itertools
+import copy
 
 # changing model structure can be faster. just not redefine the whole graph
 
@@ -242,10 +243,12 @@ class Model(object):
             if k == 0:
                 E_A = np.zeros([n*(s+1), n*(s+1)])
                 X_Ap = X_Ap_f(None, None, u, k)
+                F_A = None
+                K_A = None
+                B = None
             elif k > 0:
                 E_A = F_A @ E_A @ t(F_A) + K_A @ B @ t(K_A)
                 X_Ap = X_Ap_f(F_A, X_Ap, u, k)
-
 
             # Pp, B, K, Pu, K_
             Pp = F @ Pe @ t(F) + G @ Q @ t(G)
@@ -304,7 +307,7 @@ class Model(object):
         ''' plan: list of list of 'x0' and list of 'p' '''
 
         x, p = plan
-        x = np.array(x)
+        x = np.array(x, ndmin=2)
         p = np.array(p)
 
         # FIXME:
@@ -348,12 +351,11 @@ class Model(object):
         x = plan[:-q]
         x = np.array_split(x, q)
         plan = [x, p]
-
         crit = self.d_opt_crit(plan, u, th)
         return crit
 
-    def direct_plan(self, plan0, u, th=None):
-        ''' plan0: list of list of 'x0' and list of 'p' '''
+    def direct(self, plan0, u, th=None, use_grad=True):
+        ''' plan0: list of: list (or 2d np.array) of 'x0' and list of 'p' '''
         n = self.__n
 
         x, p = plan0
@@ -379,53 +381,148 @@ class Model(object):
         # FIXME: if x and p are arrays, this will sum them
         x0 = flatten(x) + p
 
-        #
+        # pass jacobian
         rez = scipy.optimize.minimize(fun=self.__d_crit_to_optimize, x0=x0,
                                       args=(q, u, th), method='SLSQP',
-                                      constraints=constraints, bounds=bounds,
-                                      options={'disp': True})
+                                      constraints=constraints, bounds=bounds)
         new_plan = rez['x']
 
         pn = new_plan[-q:]
-        xn = new_plan[:-q]
-        xn = np.array_split(xn, q)
+        xn = new_plan[:-q].reshape([q, n])
         new_plan = [xn, pn]
 
         # TODO: return loss and its jacobian values
         # return dictionary
         return new_plan
 
-    def clean(self, plan, dn=0.6, dp=0.05):
+    def clean(self, plan, dn=0.5, dp=0.05):
         ''' plan = [x, p], x is 2d array, p is list '''
         x, p = plan
+        p = list(p)
+
+        # clean by weight
+        while True:
+            indices = [i for i in range(len(p)) if p[i] < dp]
+            if len(indices) == 0:
+                break
+
+            i = indices[0]
+            x = np.delete(x, i, 0)
+            p_i = p.pop(i)
+            p = [p_j + p_i / len(p) for p_j in p]
 
         # clean by distance
         while True:
             tree = scipy.spatial.cKDTree(x)
             bt = tree.query_ball_tree(tree, dn)
-            lens = [len(bt_i) for bt_i in bt]
-            max_len = max(lens)
-            if max_len == 1:
+            lengths = [len(bt_i) for bt_i in bt]
+            max_length = max(lengths)
+            if max_length == 1:  # nothing to clean
                 break
-            else:
-                i = lens.index(max_len)
-                ids = bt[i]
-                npt = sum([p[i] * x[i] for i in ids])
-                x = np.delete(x, ids, 0)
-                x = np.vstack([x, npt])
-                pn = sum([p[i] for i in range(len(p)) if i in ids])
-                p = [p[i] for i in range(len(p)) if i not in ids]
-                p.append(pn)
+            else:  # clean
+                i = lengths.index(max_length)
+                indices = bt[i]  # get close points indices
 
-        # by weight
-        ids = [i for i in range(len(p)) if p[i] < dp]
-        for i in ids:
-            x = np.delete(x, i, 0)
-            p_i = p.pop(i)
-            p = [p_j + p_i / len(p) for p_j in p]
+                # merge points to new one
+                new_point = [p[i] * x[i] for i in indices]
+                px = sum([p[i] for i in indices])
+                new_point = sum(new_point) / px
+
+                x = np.delete(x, indices, 0)   # delete merged points
+                x = np.vstack([x, new_point])  # append new point
+
+                # merge corresponding weights to new one
+                pn = sum([p[i] for i in range(len(p)) if i in indices])
+
+                # delete old weights
+                p = [p[i] for i in range(len(p)) if i not in indices]
+
+                p.append(pn)  # add new weight
 
         return x, p
 
+    def __mu(self, x, M_plan, u, th):
+        M = self.fim(u=u, x0=x, th=th)
+        return -np.trace(np.linalg.inv(M_plan) @ M)
 
-    def dualproc(self):
-        pass
+    def crit_tau(self, tau, a, plan, u, th):
+        x, p = plan
+        x = np.vstack([x, a])
+        p = [p_i * (1 - tau) for p_i in p]
+        p.append(tau)
+        plan = [x, p]
+        crit = self.d_opt_crit(plan, u, th)
+        return crit
+
+    # FIXME: seems like some shit like variables scope collisions
+    def dual(self, plan, u, th=None, d=0.01):
+        ''' plan '''
+        dmu = autograd.grad(self.__mu)  # this is *not* time consuming
+
+        plan = copy.deepcopy(plan)
+
+        if th is None:
+            th = self.__th
+        else:
+            th = np.array(th)
+
+        eta = len(th)
+        n = self.__n
+        X, p = plan
+
+        crit_tau_grad = autograd.grad(self.crit_tau)
+
+        x_bounds = [(-1, 1)] * n
+
+        while True:
+            M_plan = self.norm_fim(plan, u, th)
+
+            while True:
+
+                x_guess = np.random.uniform(-1, 1, n)
+
+                # nlopts <- list(xtol_rel=1e-3, maxeval=1e3)
+                # TODO: pass gradient
+                rez = scipy.optimize.minimize(fun=self.__mu, x0=x_guess,
+                                              args=(M_plan, u, th),
+                                              method='SLSQP', jac=dmu,
+                                              bounds=x_bounds, tol=None,
+                                              options=None)
+                x_opt = rez['x']
+                mu = -rez['fun']
+
+                if abs(mu - eta) <= d:
+                    return plan
+
+                if mu > eta:
+                    break
+
+            while True:
+                # XXX: this was needed to get non singular tau value,
+                # not sure if it is still needed
+                tau_guess = np.random.uniform(size=1)
+                tau_crit = self.crit_tau(tau_guess, x_opt, copy.deepcopy(plan),
+                        u, th)
+                if not np.isnan(tau_crit):
+                    break
+
+            # TODO: pass gradient
+            rez = scipy.optimize.minimize(fun=self.crit_tau, x0=tau_guess,
+                                          args=(x_opt, copy.deepcopy(plan[:]),
+                                              u, th),
+                                          method='SLSQP')
+
+            tau_opt = rez['x']
+
+            # add x_opt, tau_opt to plan
+            X, p = plan
+            X = np.vstack([X, x_opt])
+            tau_opt = tau_opt[0]
+            p = [p_i - tau_opt / len(p) for p_i in p]
+            p.append(tau_opt)
+            plan = [X, p]
+
+            # clean plan
+            plan = self.clean(copy.deepcopy(plan))
+
+            # continue
