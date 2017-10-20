@@ -394,7 +394,7 @@ class Model(object):
 
         # TODO: return loss and its jacobian values
         # return dictionary
-        return new_plan
+        return new_plan, rez['fun']
 
     def clean(self, plan, dn=0.5, dp=0.05):
         ''' plan = [x, p], x is 2d array, p is list '''
