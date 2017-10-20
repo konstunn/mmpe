@@ -345,6 +345,7 @@ class Model(object):
         return grad
 
     # this is wraps around self.d_opt_crit() above
+    # for scipy.optimize.minimize
     def __d_crit_to_optimize(self, plan, q, u, th=None):
         # unflatten plan
         p = plan[-q:]
@@ -455,7 +456,7 @@ class Model(object):
         return crit
 
     # FIXME: seems like some shit like variables scope collisions
-    def dual(self, plan, u, th=None, d=0.01):
+    def dual(self, plan, u, th=None, d=0.05):
         ''' plan '''
         dmu = autograd.grad(self.__mu)  # this is *not* time consuming
 
@@ -480,6 +481,7 @@ class Model(object):
             while True:
 
                 x_guess = np.random.uniform(-1, 1, n)
+                x_guess = np.array([0, 0])
 
                 # nlopts <- list(xtol_rel=1e-3, maxeval=1e3)
                 # TODO: pass gradient
@@ -492,7 +494,7 @@ class Model(object):
                 mu = -rez['fun']
 
                 if abs(mu - eta) <= d:
-                    return plan
+                    return plan, self.d_opt_crit(plan, u)
 
                 if mu > eta:
                     break
@@ -501,16 +503,16 @@ class Model(object):
                 # XXX: this was needed to get non singular tau value,
                 # not sure if it is still needed
                 tau_guess = np.random.uniform(size=1)
+                tau_guess = 0.5
                 tau_crit = self.crit_tau(tau_guess, x_opt, copy.deepcopy(plan),
                         u, th)
                 if not np.isnan(tau_crit):
                     break
 
-            # TODO: pass gradient
             rez = scipy.optimize.minimize(fun=self.crit_tau, x0=tau_guess,
-                                          args=(x_opt, copy.deepcopy(plan[:]),
-                                              u, th),
-                                          method='SLSQP')
+                                          args=(x_opt, copy.deepcopy(plan),
+                                              u, th), bounds=[(0, 1)],
+                                          method='SLSQP', jac=crit_tau_grad)
 
             tau_opt = rez['x']
 
