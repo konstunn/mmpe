@@ -17,11 +17,11 @@ th = [.5, .5]
 
 m = Model(F, C, G, H, X0, P0, Q, R, th)
 
-# m.fim(u)
+plan = m.rand_plan(u)
+print(plan)
+plan = plan[0]
 
-n = np.array(F(th)).shape[0]
-s = len(th)
-s2q = lambda s: int((s + 1) * s / 2 + 1)
-q = s2q(s)
-x = np.random.uniform(-1, 1, q*s).reshape([q, n])
-p = [1/q] * q
+dp = m.direct(plan, u, th)
+print(dp)
+dp = dp[0]
+cp = m.clean(dp)

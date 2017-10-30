@@ -396,7 +396,7 @@ class Model(object):
         # return dictionary
         return new_plan, rez['fun']
 
-    def clean(self, plan, dn=0.5, dp=0.05):
+    def clean(self, plan, dn=0.5, dp=0.1):
         ''' plan = [x, p], x is 2d array, p is list '''
         x, p = plan
         p = list(p)
@@ -455,6 +455,17 @@ class Model(object):
         crit = self.d_opt_crit(plan, u, th)
         return crit
 
+    def rand_plan(self, u):
+        n = self.__n
+        s = len(self.__th)
+        s2q = lambda s: int((s + 1) * s / 2 + 1)
+        q = s2q(s)
+        x = np.random.uniform(-1, 1, q*n).reshape([q, n])
+        p = [1/q] * q
+        plan = [x, p]
+        crit = self.d_opt_crit(plan, u)
+        return [x, p], crit
+
     # FIXME: seems like some shit like variables scope collisions
     def dual(self, plan, u, th=None, d=0.05):
         ''' plan '''
@@ -481,7 +492,6 @@ class Model(object):
             while True:
 
                 x_guess = np.random.uniform(-1, 1, n)
-                x_guess = np.array([0, 0])
 
                 # nlopts <- list(xtol_rel=1e-3, maxeval=1e3)
                 # TODO: pass gradient
@@ -503,7 +513,6 @@ class Model(object):
                 # XXX: this was needed to get non singular tau value,
                 # not sure if it is still needed
                 tau_guess = np.random.uniform(size=1)
-                tau_guess = 0.5
                 tau_crit = self.crit_tau(tau_guess, x_opt, copy.deepcopy(plan),
                         u, th)
                 if not np.isnan(tau_crit):

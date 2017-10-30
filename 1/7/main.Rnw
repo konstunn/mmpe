@@ -246,9 +246,9 @@ dmu <- function(x, model, Mxi, th)
 	return(-dmu_dx)
 }
 
-Xtau <- function(tau, model, x, X, p, th, u)
+Xtau <- function(tau, model, a, X, p, th, u)
 {
-	X <- rbind(X, x)
+	X <- rbind(X, a)
 
 	p <- p * (1 - tau)
 	p <- c(p, tau)
@@ -319,6 +319,7 @@ clean <- function(l)
 dualproc <- function(model, l, u=NULL, use.grad=T)
 {
   # inequalities constraints function
+	# -1 <= a <= 1
   hina <- function(a)
   {
     h <- 1 - a
