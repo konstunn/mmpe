@@ -1,0 +1,1950 @@
+
+\documentclass[a4paper,14pt]{extarticle}
+
+\usepackage{cmap}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage[russian]{babel}
+
+\usepackage[a4paper,margin=1.5cm,footskip=1cm,left=2cm,right=1.5cm,top=1.5cm
+  ,bottom=2.0cm]{geometry}
+\usepackage{textcase}
+\usepackage{csquotes}
+\usepackage{enumitem}
+
+\usepackage[labelsep=period,justification=centering]{caption}
+
+\usepackage{graphicx}
+\graphicspath{ {figure/} }
+
+\usepackage{amsmath}
+\usepackage{pgfplots}
+
+\usepackage{float}
+
+\usepackage{indentfirst}
+
+\usepackage{textgreek}
+
+\usepackage{pythontex}
+
+\usepackage{comment}
+
+% 
+\setlist[description]{leftmargin=\parindent,labelindent=\parindent}
+
+\renewcommand{\baselinestretch}{1.5}
+
+\usepackage[titletoc,title]{appendix}
+
+\DeclareMathOperator{\Sp}{Sp}
+
+\newcommand{\pred}[0]{t_{k+1}|t_k}
+\newcommand{\est}[0]{t_k|t_k}
+\newcommand{\fut}[0]{t_{k+1}}
+\newcommand{\estfut}[0]{t_{k+1}|t_{k+1}}
+
+\renewcommand{\vec}[1]{#1}
+
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\pdpk}[1]{\pd{#1}{\theta_i}}
+
+\newcommand{\inv}[1]{#1^{-1}}
+
+\newcommand{\eps}{\varepsilon}
+
+\begin{document}
+
+\setcounter{secnumdepth}{0}
+
+\begin{titlepage}
+
+  \begin{center}
+    Новосибирский государственный технический университет
+    
+    Факультет прикладной математики и информатики
+    
+    Кафедра теоретической и прикладной информатики
+    
+    \vspace{250pt}
+    
+    \textbf{\Large{Лабораторная работа № 1}}
+    \medbreak
+    <<Оценивание неизвестных параметров линейных дискретных систем>>
+    \medbreak
+    по дисциплине \\
+    \medbreak
+    <<Математические методы планирования эксперимента>>
+    \vspace{100pt}
+  \end{center}
+
+  \begin{flushleft}
+    \begin{tabbing}
+      Группа:\qquad\qquad \= ПММ-61\\
+      Студент:            \> Горбунов К. К.\\
+      Преподаватель:      \> Чубич В. М.\\
+    \end{tabbing}
+  \end{flushleft}
+
+  \begin{center}
+    \vspace{\fill}
+    Новосибирск, 2017 г.
+  \end{center}
+
+\end{titlepage}
+
+\newpage
+
+\section{Цель работы}
+
+Ознакомиться алгоритмом оценивания неизвестных параметров моделей
+стохастических линейных дискретных систем методом максимального правдоподобия
+(ММП).
+
+\section{Порядок выполнения лабораторной работы}
+
+\begin{enumerate}
+\item Изучить соответствующий материал лекции на тему <<Оценивание
+  неизвестных параметров дискретных моделей>>.
+
+\item Последовательно выполнить все задания к лабораторной работе.
+
+\item Проверить правильность реализации алгоритмов и работоспособность
+  программ.
+
+\end{enumerate}
+
+\section{Задание к лабораторной работе}
+
+\begin{enumerate}
+
+\item Реализовать вычисление значения критерия максимального
+  \mbox{правдоподобия}.
+
+\item Проверить правильность исполнения программы на примерах.
+
+\item Для стохастических линейных дискретных моделей при различных
+  вариантах вхождения неизвестных параметров в уравнения состояния и измерения
+  получить оценки параметров.
+
+\end{enumerate}
+
+\newpage
+
+\section{Теоретический материал}
+
+\subsection{Описание модельной структуры}
+
+Модель стохастической динамической линейной дискретной системы в простанстве
+состояний в виде \cite{mono}:
+\begin{equation}
+  \label{eq:initmod}
+  \left\{ 
+    \begin{array}{lll}
+      \vec{x}(t_{k+1}) &= F \vec{x}(t_k) + C \vec{u}(t_k) + G \vec{w}(t_k),&\\
+      \vec{y}(t_{k+1}) &= H \vec{x}(t_{k+1}) + \vec{v}(t_{k+1}), 
+      & k = 0,\ldots, N-1
+    \end{array} 
+  \right. 
+\end{equation}
+
+Здесь:
+\begin{description}
+  \item [$\vec{x}(t_k)$] -- $n$-вектор состояния;
+  \item [$F$] -- матрица перехода состояния;
+  \item [$\vec{u}(t_k)$] -- $r$-вектор управления (входного воздействия);
+  \item [$C$] -- матрица управления;
+  \item [$\vec{w}(t_k)$] -- $p$-вектор возмущений;
+  \item [$G$] -- матрица влияния возмущений;
+  \item [$H$] -- матрица наблюдения;
+  \item [$\vec{v}(t_{k+1})$] -- $m$-вектор шума измерений;
+  \item [$\vec{y}(t_{k+1})$] -- $m$-вектор наблюдений (измерений) отклика;
+\end{description}
+
+
+$F, C, G, H$ --- матрицы соответствующих размеров.
+
+\bigskip
+Априорные предположения:
+\begin{itemize}
+\item $F$ устойчива;
+\item пары $(F, C)$ и $(F, G)$ управляемы;
+\item пара $(F, H)$ --- наблюдаема;
+\item $\vec{w}(t_k)$ и $\vec{v}(t_{k+1})$ --- случайные векторы, образующие
+стационарные белые гауссовские последовательности, причем:
+\[
+E[\vec{w}(t_k)] = 0,\ E[\vec{w}(t_k)\vec{w}^{T}(t_l)] = Q \delta_{k,l}\ ;
+\]
+\[
+E[\vec{v}(t_{k+0}) = 0,\ E[\vec{v}(t_{k+1})\vec{v}^{T}(t_{l+1})] = R
+\delta_{k,l}\;
+\]
+\[
+E[\vec{v}(t_k)\vec{w}^{T}(t_k)] = 0,
+\]
+для любых $k, l = 0, 1, \ldots, N-1$ ($\delta_{k,l}$ --- символ Кронекера);
+
+\item начальное состояние $\vec{x}(0)$ имеет нормальное распределение с
+параметрами $\overline{\vec{x}}(0)$ и $P(0)$ и не коррелирует с $\vec{w(t_k)}$
+и $\vec{v_{k+1}}$ при любых значениях $k$.
+
+Будем считать, что подлежащие оцениванию параметры $\theta = (\theta_1,
+\theta_2, \ldots, \theta_s)$ могут входить в элементы матриц $F, C, G, H, Q, R,
+P(0)$ и в вектор $\overline{\vec{x}}(0)$ в различных комбинациях.
+
+\end{itemize}
+
+\subsection{Критерий идентификации}
+
+
+В качестве критерия идентификации используется логарифмическая функция
+правдоподобия. Она имеет вид \cite{mono}:
+\begin{equation*}
+\begin{split}
+  \chi(\theta) = -\ln{L(\theta)} = \frac{Nm}{2}\ ln{2\pi} + \frac{1}{2}
+  \sum\limits_{k=0}^{N-1} \left[ \eps^T(t_{k+1}) B^{-1}(t_{k+1}) \eps(t_{k+1}) \right]
+  + \\ + \frac{1}{2} \sum\limits_{k=0}^{N-1} \ln \det B^{-1}(t_{k+1}).
+\end{split}
+\end{equation*}
+
+Алгоритм вычисления критерия следующий \cite{mono}:
+
+\begin{enumerate}
+\item для заданного $\theta$  найдем $F, C, G, Q, R, \overline{\vec{x}}(0),
+P(0)$.
+\item положим $k = 0$, $\chi(\theta) = \frac{Nm}{2} \ln{2\pi}$, $\Delta_2 = 0$,
+$P(0|0) = P(0)$.
+\item Используя выражения фильтра Калмана, вычислим:
+\[
+  P(t_{k+1}|t_k) = F P(t_k|t_k) F^T + GQG^T;
+\]
+\[
+  B(t_{k+1}) = H P(t_{k+1}|t_k) H^T + R;
+\]
+\[
+  K(t_{k+1}) = P(t_{k+1}|t_k) H^T B^{-1}(t_{k+1});
+\]
+\[
+  P(t_{k+1}|t_{k+1}) = \left[ I - K(t_{k+1}) H \right] P(t_{k+1}|t_k).
+\]
+\item Вычислим $\Delta_2 = \Delta_2 + \frac{1}{2} \ln \det B(t_{k+1})$.
+\item Увеличим $k$ на единицу. Если $k \le N-1$, перейдем на шаг 3. В противном
+случае --- на шаг 6.
+\item Положим $k = 0$.
+\item Используя выражения фильтра Калмана, найдем:
+\[
+  \hat{x}(t_{k+1}|t_k) = F \hat{x}(t_k|t_k) + C u(t_k);
+\]
+\[
+  \eps(t_{k+1}) = y(t_{k+1}) - H \hat{x} (t_{k+1}|t_k);
+  \hat{x}(t_{k+1}|t_{k+1}) = \hat{x}(t_{k+1}|t_k) + K(t_{k+1}) \eps(t_{k+1}).
+\]
+\item Найдем значение приращения логарифмической функции правдоподобия
+$\Delta_1$, соответствующее текущему значению времени:
+\[
+  \Delta_1 = \frac{1}{2} \left[ \eps(t_{k+1}) \right]^T B^{-1}(t_{k+1}) 
+  \left[ \eps(t_{k+1}) \right].
+\]
+\item Положим $\chi(\theta) = \chi(\theta) + \Delta_1$.
+\item Увеличим $k$ на единицу. Если $k \le N-1$, перейдем на шаг 7.
+В противном случае --- на шаг 11.
+\item Положим $\chi(\theta) = \chi(\theta) + \Delta_2$ и закончим процесс.
+\end{enumerate}
+
+\subsection{Градиент критерия идентификации}
+
+Выражение для градиента критерия имеет вид \cite{mono}:
+\begin{equation*}
+\begin{split}
+  \frac{\partial \chi(\theta)}{\partial \theta_i} = \sum\limits_{k=0}^{N-1}
+  \left[ \frac{\partial \eps(t_{k+1})}{\partial \theta_i} \right]^T
+  B^{-1}(t_{k+1}) \left[ \eps(t_{k+1}) \right] - \\
+  - \frac{1}{2}
+  \sum\limits_{k=0}^{N-1} \left[ \eps(t_{k+1}) \right]^T B^{-1}(t_{k+1})
+  \frac{\partial B(t_{k+1})}{\partial \theta_i} B^{-1}(t_{k+1}) \eps(t_{k+1}) +
+  \\ + 
+  \frac{1}{2} \sum\limits_{k=0}^{N-1} \Sp \left[ B^{-1}(t_{k+1})
+  \frac{\partial B(t_{k+1})}{\partial \theta_i} \right]. 
+\end{split}
+\end{equation*}
+
+
+Алгоритм вычисления градиента критерия следующий \cite{mono}:
+\begin{enumerate}
+\item Для заданного $\theta$ найдем: $F, \pd{F}{\theta_i}, Q, \pd{Q}{\theta_i},
+C, \pd{C}{\theta_i}, R, \pd{R}{\theta_i}, G, \pd{G}{\theta_i}, \overline{x}(0),
+\pd{\overline{x}(0)}{\theta_i}, H, \pd{H}{\theta_i}$, $P(0),
+\pd{P(0)}{\theta_i}$, $i = 1, 2, \ldots, s$. 
+
+\item Положим $k = 0$; $\pd{\chi(\theta)}{\theta_i} = 0$; $P(0|0) = P(0)$;
+$\pd{P(0|0)}{\theta_i} = \pd{P(0)}{\theta_i}$, $i = 1, 2, \ldots, s$;
+$\Delta_2' = 0$.
+
+\item Используем выражения фильтра Калмана, вычислим:
+\[
+  P(t_{k+1}|t_k) = F P(t_k|t_k) F^T + GQG^T;
+\]
+\[
+  B(t_{k+1}) = H P(t_{k+1}|t_k) H^T + R;
+\]
+\[
+  K(t_{k+1}) = P(t_{k+1}|t_k) H^T B^{-1}(t_{k+1});
+\]
+\[
+  P(t_{k+1}|t_{k+1}) = \left[ I - K(t_{k+1}) H \right] P(t_{k+1}|t_k)
+\]
+\item Найдем $\pd{P(t_{k+1}|t_k)}{\theta_i}$, $\pd{B(t_{k+1})}{\theta_i}$,
+$\pd{K(t_{k+1})}{\theta_i}$, $\pd{P(t_{k+1}|t_{k+1})}{\theta_i}$ для всех
+$i = 1, 2, \ldots, s$ по формулам, вытекающим из уравнений фильтра Калмана:
+\begin{equation*}
+\begin{split}
+  \pd{P(t_{k+1}|t_k)}{\theta_i} = \pd{F}{\theta_i} P(t_k|t_k) F^T + F
+  \pd{P(t_k|t_k)}{\theta_i} F^T + F P(t_k|t_k) \pd{F^T}{\theta_i} + \\ +
+  \pd{G}{\theta_i} Q G^T + G \pd{Q}{\theta_i} G^T + G Q \pd{G^T}{\theta_i};
+\end{split}
+\end{equation*}
+
+
+
+\[
+  \pdpk{B(t_{k+1})} = \pdpk{H} P(t_{k+1}|t_k) H^T + H \pdpk{P(\pred)} H^T +
+  H P(\pred) \pdpk{H^T} + \pdpk{R}; 
+\]
+
+
+\begin{equation*}
+\begin{split}
+  \pdpk{K(\fut)} = \left[ \pdpk{P(\pred)} H^T + P(\pred) \pdpk{H^T} - \right.
+  \\ \left. -
+  P(\pred) H^T \inv{B}(\fut) \pdpk{B(\fut)} \right] \inv{B}(\fut); \end{split}
+\end{equation*}
+
+\begin{equation*}
+\begin{split}
+  \pdpk{P(\estfut)} = \left[ I - K(\fut) H \right] \pdpk{P(\pred)} - \\ -
+  \left[ \pdpk{K(\fut)} H + K(\fut) \pdpk{H} \right] P(\pred).
+\end{split}
+\end{equation*}
+
+\item Вычислим $\Delta_2' = \Delta_2' + \frac{1}{2} \Sp \left[ \inv{B}(\fut)
+\pdpk{B(\fut)} \right].$
+
+\item Увеличим $k$ на единицу. Если $k \le N-1$, перейдем на шаг 3. В противном
+случае --- на шаг 7.
+
+\item Положим $k = 0$.
+
+\item Используя выражения фильтра Калмана, найдем:
+\[
+  \hat{x}(\pred) = F \hat{x}(\est) + C u(t_k);
+\]
+\[
+  \eps(\fut) = y(\fut) - H \hat{x}(\pred);
+\]
+\[
+  \hat{x}(\estfut) = \hat{x}(\pred) + K(\fut) \eps(\fut).
+\]
+
+\item Найдем $\pdpk{\hat{x}(\pred)},\ \pdpk{\eps(\fut)},\
+\pdpk{\hat{x}(\estfut)}$ для всех $i = 1, 2, \ldots, s$ по формулам, вытакающим
+из уравнений фильтра Калмана:
+\[
+  \pdpk{\hat{x}(\pred)} = \pdpk{F} \hat{x}(\est) + F \pdpk{\hat{x}(\est)} +
+  \pdpk{C} u(t_k);
+\]
+\[
+  \pdpk{\eps(\fut)} = -\pdpk{H} \hat{x}(\pred) - H \pdpk{\hat{x}(\pred)};
+\]
+\[
+  \pdpk{\hat{x}(\estfut)} = \pdpk{\hat{x}(\pred)} + \pdpk{K(\fut)} \eps(\fut) +
+  K(\fut) \pdpk{\eps(\fut)}.
+\]
+
+\item Найдем значение приращения градиента $\Delta_1'$, соответствующее
+текущему значению времени:
+\begin{equation*}
+\begin{split}
+  \Delta_1' = \left[ \pdpk{\eps(\fut)} \right]^T \inv{B}(\fut)
+  \left[ \eps(\fut) \right] - \\ - \frac{1}{2} \left[ \eps(\fut) \right]^T
+  \inv{B}(\fut) \pdpk{B(\fut)} \inv{B}(\fut) \eps(\fut).
+\end{split}
+\end{equation*}
+
+\item Положим $\pdpk{\chi(\theta)} = \pdpk{\chi(\theta)} + \Delta_1'$,
+$i = 1, 2, \ldots, s$.
+
+\item Увеличим $k$ на единицу. Если $k \le N-1$, перейдем на шаг 8.
+В противном случае --- на шаг 13.
+
+\item Положим $\pdpk{\chi(\theta)} = \pdpk{\chi(\theta)} + \Delta_2'$,
+$i = 1, 2, \ldots, s$ и закончим процесс.
+
+\end{enumerate}
+
+% imports
+\begin{pythontexcustomcode}{py}
+import numpy as np
+import dill as pkl
+from model.model import Model
+import pylatex
+
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+
+def surf_plot_save(X, Y, Z, filepath):
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+
+    surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
+                           linewidth=0, antialiased=False)
+
+    ax.set_xlabel(r'$\theta_1$')
+    ax.set_ylabel(r'$\theta_2$')
+    ax.set_zlabel(r'$L(\theta_1, \theta_2)$')
+
+    ax.zaxis.get_major_formatter().set_powerlimits((0, 1))
+
+    plt.savefig(filepath, bbox_inches='tight')
+\end{pythontexcustomcode}
+
+\section{Примеры решений}
+
+% define, create model 1
+\begin{pycode}[model1]
+F = lambda th: [[th[0], 0.],
+                [0., th[1]]]
+
+C = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+G = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+H = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+x0_m = lambda th: [[0.],
+                   [0.]]
+
+x0_c = lambda th: [[0.1, 0.],
+                   [0., 0.1]]
+
+w_c = lambda th: [[0.05, 0.],
+                  [0., 0.05]]
+
+v_c = lambda th: [[0.15, 0.],
+                  [0., 0.15]]
+
+th_true = [0.5, 0.5]
+
+# TODO: check if there are extra components in 'th'
+m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th_true)
+\end{pycode}
+
+% TODO: introduce counter
+% TODO: print numpy arrays instead of matrices
+\subsection{Пример 1: параметры в матрице перехода $F$}
+\[
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} \theta_1 & 0 \\ 0 & \theta_2 \end{pmatrix}
+  \begin{pmatrix} x_1(t_k) \\ x_2(t_k) \end{pmatrix}
+  + \begin{pmatrix} u_1(t_k) \\ u_2(t_k) \end{pmatrix}
+  + \begin{pmatrix} w_1(t_k) \\ w_2(t_k) \end{pmatrix}
+\]
+\[
+  \begin{pmatrix} y_1(\fut) \\ y_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} +
+  \begin{pmatrix} v_1(\fut) \\ v_2(\fut) \end{pmatrix}
+\]
+\[
+  \overline{x}(0) = \begin{pmatrix} 0 \\ 0 \end{pmatrix},\
+  P(0) = \begin{pmatrix} 0.1 & 0 \\ 0 & 0.1 \end{pmatrix},\
+  Q = \begin{pmatrix} 0.05 & 0 \\ 0 & 0.05 \end{pmatrix},\
+  R = \begin{pmatrix} 0.15 & 0 \\ 0 & 0.15 \end{pmatrix}
+\]
+
+Истинные значения параметров
+$\theta_{true} = \begin{pmatrix} 0.5 & 0.5 \end{pmatrix}$ \\
+
+\indent Управляющее воздействие --- дискретная ступенчатая функция
+\[
+  u(t_k) = \begin{pmatrix} 10 \\ 10 \end{pmatrix},\ k = 0, 1, 2, \ldots, 99
+\]
+
+Область оценивания: $0.1 \le \theta_i \le 0.9$, $i = 1, \ldots, s$.
+
+% simulate response, fit model, dump results
+\begin{pycode}[model1]
+N = 100
+u = np.ones([2, N])
+u = u * 10
+
+# run simulation
+rez = m.sim(u)  # TODO: return dictionary or named tuple
+y = rez[1]
+
+yhat_true = m.yhat(u=u, y=y)
+
+th_init = [0.1, 0.9]
+
+loss_true = m.lik(u=u, y=y)
+loss_init = m.lik(u=u, y=y, th=th_init)
+
+rez = m.mle_fit(th=th_init, y=y, u=u)
+
+th_e = rez['x']
+loss_e = rez['fun']
+
+yhat_e = m.yhat(u=u, y=y, th=th_e)
+
+data = {'loss_init': loss_init,
+        'loss_true': loss_true,
+        'th_e': th_e,
+        'loss_e': loss_e,
+        'th_true': th_true,
+        'yhat_true': yhat_true,
+        'yhat_e': yhat_e}
+
+with open('./data/data1.pkl', 'wb') as f:
+  pkl.dump(data, f)
+\end{pycode}
+
+% load results data and print their values below
+\begin{pycode}
+filepath = './data/data1.pkl'
+pytex.add_dependencies(filepath)
+with open(filepath, 'rb') as f:
+    data = pkl.load(f)
+
+loss_true = data['loss_true']
+loss_init = data['loss_init']
+
+loss_e = data['loss_e']
+
+th_e = data['th_e']
+th_e_m = np.matrix(th_e)
+th_e = np.around(th_e_m, 6)
+th_e = pylatex.Matrix(th_e, mtype='b')
+th_e = th_e.dumps()
+
+th_t = data['th_true']
+th_t = np.matrix(th_t)
+
+rtol = np.linalg.norm(th_t - th_e_m) / np.linalg.norm(th_t)
+rtol = "%.6f" % (rtol * 100)
+
+yhat_t = data['yhat_true']
+yhat_e = data['yhat_e']
+rtoly = np.linalg.norm(yhat_t - yhat_e) / np.linalg.norm(yhat_t)
+rtoly = "%.6f" % (rtoly * 100)
+\end{pycode}
+
+\subsubsection{Оценивание параметров: результаты}
+
+Значение критерия при истинных значениях параметров
+\[
+L(\theta_{true}) = \pyc{print("%.3f" % loss_true)}.
+\]
+
+Начальное приближение по параметрам
+\[ % TODO: make reproducible
+\theta_{init} = \begin{bmatrix} 0.1 & 0.9 \end{bmatrix}.
+\]
+
+Значение критерия при начальном приближении
+\[
+L(\theta_{init}) = \pyc{print("%.3f" % loss_init)}.
+\]
+
+Полученные оценки параметров
+\[
+\hat{\theta} = \pyc{print(th_e)}
+\]
+
+Значение критерия 
+\[
+L(\hat{\theta}) = \pyc{print("%.3f" % loss_e)}
+\]
+
+\newcommand{\rtol}[1]{\frac{||#1_{true} - \hat{#1}||}{||#1_{true}||}}
+
+Относительная погрешность в пространстве параметров:
+\[
+\rtol{\theta} = \pyc{print(rtol)} \%
+\]
+
+Относительная погрешность в пространстве откликов:
+\[
+\rtol{y} = \pyc{print(rtoly)} \%
+\]
+
+График поверхности, отражающей зависимость критерия от параметров представлен
+далее.
+
+% calc for plot
+\begin{pycode}[model1]
+def f(th0, th1, u, y):
+    return m.lik(th=[th0, th1], u=u, y=y)
+
+vf = np.vectorize(f, excluded={'u', 'y'})
+
+X = np.linspace(.1, .9, num=25)
+Y = X
+X, Y = np.meshgrid(X, Y)
+
+Z = vf(X, Y, u=u, y=y)
+
+with open('./data/plot1.pkl', 'wb') as f:
+    pkl.dump([X, Y, Z], f)
+\end{pycode}
+
+% save figure
+\begin{pycode}[plot1]
+depfile = './data/plot1.pkl'
+pytex.add_dependencies(depfile)
+with open(depfile, 'rb') as f:
+    X, Y, Z = pkl.load(f)
+
+surf_plot_save(X, Y, Z, 'figure/L1.pdf')
+\end{pycode}
+
+% include figure
+\begin{pycode}
+pytex.add_dependencies('./figure/L1.pdf')
+print(r'\begin{figure}[H]')
+print(r'\includegraphics[width=\textwidth]{L1.pdf}')
+print(r'\caption{Поверхность, отражающая зависимость критерия от параметров}')
+print(r'\end{figure}')
+\end{pycode}
+Выводы: поверхность выпуклая, виден выраженный минимум.
+
+\newpage % TODO: DO NOT REPEAT YOURSELF
+\subsection{Пример 2: параметры в матрице управления $C$}
+
+% define, create model 2
+\begin{pycode}[model2]
+F = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+C = lambda th: [[th[0], 0.],
+                [0., th[1]]]
+
+G = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+H = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+x0_m = lambda th: [[0.],
+                   [0.]]
+
+x0_c = lambda th: [[0.1, 0.],
+                   [0., 0.1]]
+
+w_c = lambda th: [[0.05, 0.],
+                  [0., 0.05]]
+
+v_c = lambda th: [[0.15, 0.],
+                  [0., 0.15]]
+
+th_true = [1, 1]
+
+m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th_true)
+\end{pycode}
+
+\[
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} x_1(t_k) \\ x_2(t_k) \end{pmatrix} +
+  \begin{pmatrix} \theta_1 & 0 \\ 0 & \theta_2 \end{pmatrix}
+  \begin{pmatrix} u_1(t_k) \\ u_2(t_k) \end{pmatrix}
+  + \begin{pmatrix} w_1(t_k) \\ w_2(t_k) \end{pmatrix}
+\]
+\[
+  \begin{pmatrix} y_1(\fut) \\ y_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} +
+  \begin{pmatrix} v_1(\fut) \\ v_2(\fut) \end{pmatrix}
+\]
+
+Истинные значения параметров
+$\theta_{true} = \begin{pmatrix} 1 & 1 \end{pmatrix}$ \\
+
+Остальные условия остаются такими же, как в примере 1.
+
+% simulate response, fit model, dump results
+\begin{pycode}[model2]
+N = 100
+u = np.ones([2, N])
+u = u * 10
+
+# run simulation
+rez = m.sim(u)  # TODO: return dictionary or named tuple
+y = rez[1]
+
+yhat_true = m.yhat(u=u, y=y)
+
+th_init = [0.1, 0.9]
+
+loss_true = m.lik(u=u, y=y)
+loss_init = m.lik(u=u, y=y, th=th_init)
+
+rez = m.mle_fit(th=th_init, y=y, u=u)
+
+th_e = rez['x']
+loss_e = rez['fun']
+
+yhat_e = m.yhat(u=u, y=y, th=th_e)
+
+data = {'loss_init': loss_init,
+        'loss_true': loss_true,
+        'th_e': th_e,
+        'loss_e': loss_e,
+        'th_true': th_true,
+        'yhat_true': yhat_true,
+        'yhat_e': yhat_e}
+
+with open('./data/data2.pkl', 'wb') as f:
+    pkl.dump(data, f)
+\end{pycode}
+
+% load results data and print their values below
+\begin{pycode}
+filepath = './data/data2.pkl'
+pytex.add_dependencies(filepath)
+with open(filepath, 'rb') as f:
+  data = pkl.load(f)
+
+loss_true = data['loss_true']
+loss_init = data['loss_init']
+
+loss_e = data['loss_e']
+
+th_e = data['th_e']
+th_e_m = np.matrix(th_e)
+th_e = np.around(th_e_m, 6)
+th_e = pylatex.Matrix(th_e, mtype='b')
+th_e = th_e.dumps()
+
+th_t = data['th_true']
+th_t = np.matrix(th_t)
+
+rtol = np.linalg.norm(th_t - th_e_m) / np.linalg.norm(th_t)
+rtol = "%.6f" % (rtol * 100)
+
+yhat_t = data['yhat_true']
+yhat_e = data['yhat_e']
+rtoly = np.linalg.norm(yhat_t - yhat_e) / np.linalg.norm(yhat_t)
+rtoly = "%.6f" % (rtoly * 100)
+\end{pycode}
+
+\subsubsection{Оценивание параметров: результаты}
+
+Значение критерия при истинных значениях параметров
+\[
+L(\theta_{true}) = \pyc{print("%.3f" % loss_true)}.
+\]
+
+Начальное приближение по параметрам
+\[ % TODO: make reproducible
+\theta_{init} = \begin{bmatrix} 0.1 & 0.9 \end{bmatrix}.
+\]
+
+Значение критерия при начальном приближении
+\[
+L(\theta_{init}) = \pyc{print("%.3f" % loss_init)}.
+\]
+
+Полученные оценки параметров
+\[
+\hat{\theta} = \pyc{print(th_e)}
+\]
+
+Значение критерия 
+\[
+L(\hat{\theta}) = \pyc{print("%.3f" % loss_e)}
+\]
+
+Относительная погрешность в пространстве параметров:
+\[
+\rtol{\theta} = \pyc{print(rtol)} \%
+\]
+
+Относительная погрешность в пространстве откликов:
+\[
+\rtol{y} = \pyc{print(rtoly)} \%
+\]
+
+График поверхности, отражающей зависимость критерия от параметров представлен
+далее.
+
+% calc for plot
+\begin{pycode}[model2]
+def f(th0, th1, u, y):
+    return m.lik(th=[th0, th1], u=u, y=y)
+
+vf = np.vectorize(f, excluded={'u', 'y'})
+
+X = np.linspace(0.5, 1.5, num=25)
+Y = X
+X, Y = np.meshgrid(X, Y)
+
+Z = vf(X, Y, u=u, y=y)
+
+with open('./data/plot2.pkl', 'wb') as f:
+    pkl.dump([X, Y, Z], f)
+\end{pycode}
+
+% save figure
+\begin{pycode}[plot2]
+depfile = './data/plot2.pkl'
+pytex.add_dependencies(depfile)
+with open(depfile, 'rb') as f:
+    X, Y, Z = pkl.load(f)
+
+surf_plot_save(X, Y, Z, 'figure/L2.pdf')
+\end{pycode}
+
+% include figure
+\begin{pycode}
+pytex.add_dependencies('./figure/L2.pdf')
+print(r'\begin{figure}[H]')
+print(r'\includegraphics[width=\textwidth]{L2.pdf}')
+print(r'\caption{Поверхность, отражающая зависимость критерия от параметров}')
+print(r'\end{figure}')
+\end{pycode}
+
+Вывод: поверхность выпуклая, минимум выраженный, но менее, чем в примере 1.
+Это видно при сравнении масштабов осей $Z$ графика в примере 1 и графика в данном
+примере.
+
+\newpage
+\subsection{Пример 3: параметры в матрице наблюдения $H$}
+
+% define, create model 3
+\begin{pycode}[model3]
+F = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+C = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+G = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+H = lambda th: [[th[0], 0.],
+                [0., th[1]]]
+
+x0_m = lambda th: [[0.],
+                   [0.]]
+
+x0_c = lambda th: [[0.1, 0.],
+                   [0., 0.1]]
+
+w_c = lambda th: [[0.05, 0.],
+                  [0., 0.05]]
+
+v_c = lambda th: [[0.15, 0.],
+                  [0., 0.15]]
+
+th_true = [1, 1]
+
+m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th_true)
+\end{pycode}
+
+\[
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} x_1(t_k) \\ x_2(t_k) \end{pmatrix} +
+  \begin{pmatrix} u_1(t_k) \\ u_2(t_k) \end{pmatrix}
+  + \begin{pmatrix} w_1(t_k) \\ w_2(t_k) \end{pmatrix}
+\]
+\[
+  \begin{pmatrix} y_1(\fut) \\ y_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} \theta_1 & 0 \\ 0 & \theta_2 \end{pmatrix}
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} +
+  \begin{pmatrix} v_1(\fut) \\ v_2(\fut) \end{pmatrix}
+\]
+
+Истинные значения параметров
+$\theta_{true} = \begin{pmatrix} 1 & 1 \end{pmatrix}$ \\
+
+Остальные условия остаются такими же, как в примере 1.
+
+% simulate response, fit model, dump results
+\begin{pycode}[model3]
+N = 100
+u = np.ones([2, N])
+u = u * 10
+
+# run simulation
+rez = m.sim(u)  # TODO: return dictionary or named tuple
+y = rez[1]
+
+yhat_true = m.yhat(u=u, y=y)
+
+th_init = [0.1, 0.9]
+
+loss_true = m.lik(u=u, y=y)
+loss_init = m.lik(u=u, y=y, th=th_init)
+
+rez = m.mle_fit(th=th_init, y=y, u=u)
+
+th_e = rez['x']
+loss_e = rez['fun']
+
+yhat_e = m.yhat(u=u, y=y, th=th_e)
+
+data = {'loss_init': loss_init,
+        'loss_true': loss_true,
+        'th_e': th_e,
+        'loss_e': loss_e,
+        'th_true': th_true,
+        'yhat_true': yhat_true,
+        'yhat_e': yhat_e}
+
+with open('./data/data3.pkl', 'wb') as f:
+    pkl.dump(data, f)
+\end{pycode}
+
+% load results data and print their values below
+\begin{pycode}
+filepath = './data/data3.pkl'
+pytex.add_dependencies(filepath)
+with open(filepath, 'rb') as f:
+  data = pkl.load(f)
+
+loss_true = data['loss_true']
+loss_init = data['loss_init']
+
+loss_e = data['loss_e']
+
+th_e = data['th_e']
+th_e_m = np.matrix(th_e)
+th_e = np.around(th_e_m, 6)
+th_e = pylatex.Matrix(th_e, mtype='b')
+th_e = th_e.dumps()
+
+th_t = data['th_true']
+th_t = np.matrix(th_t)
+
+rtol = np.linalg.norm(th_t - th_e_m) / np.linalg.norm(th_t)
+rtol = "%.6f" % (rtol * 100)
+
+yhat_t = data['yhat_true']
+yhat_e = data['yhat_e']
+rtoly = np.linalg.norm(yhat_t - yhat_e) / np.linalg.norm(yhat_t)
+rtoly = "%.6f" % (rtoly * 100)
+\end{pycode}
+
+\subsubsection{Оценивание параметров: результаты}
+
+Значение критерия при истинных значениях параметров
+\[
+L(\theta_{true}) = \pyc{print("%.3f" % loss_true)}.
+\]
+
+Начальное приближение по параметрам
+\[ % TODO: make reproducible
+\theta_{init} = \begin{bmatrix} 0.1 & 0.9 \end{bmatrix}.
+\]
+
+Значение критерия при начальном приближении
+\[
+L(\theta_{init}) = \pyc{print("%.3f" % loss_init)}.
+\]
+
+Полученные оценки параметров
+\[
+\hat{\theta} = \pyc{print(th_e)}
+\]
+
+Значение критерия 
+\[
+L(\hat{\theta}) = \pyc{print("%.3f" % loss_e)}
+\]
+
+Относительная погрешность в пространстве параметров:
+\[
+\rtol{\theta} = \pyc{print(rtol)} \%
+\]
+
+Относительная погрешность в пространстве откликов:
+\[
+\rtol{y} = \pyc{print(rtoly)} \%
+\]
+
+График поверхности, отражающей зависимость критерия от параметров представлен
+далее.
+
+% calc for plot
+\begin{pycode}[model3]
+def f(th0, th1, u, y):
+    return m.lik(th=[th0, th1], u=u, y=y)
+
+vf = np.vectorize(f, excluded={'u', 'y'})
+
+X = np.linspace(0.5, 2.0, num=25)
+Y = X
+X, Y = np.meshgrid(X, Y)
+
+Z = vf(X, Y, u=u, y=y)
+
+with open('./data/plot3.pkl', 'wb') as f:
+    pkl.dump([X, Y, Z], f)
+\end{pycode}
+
+% save figure
+\begin{pycode}[plot3]
+depfile = './data/plot3.pkl'
+pytex.add_dependencies(depfile)
+with open(depfile, 'rb') as f:
+    X, Y, Z = pkl.load(f)
+
+surf_plot_save(X, Y, Z, 'figure/L3.pdf')
+\end{pycode}
+
+% include figure
+\begin{pycode}
+pytex.add_dependencies('./figure/L3.pdf')
+print(r'\begin{figure}[H]')
+print(r'\includegraphics[width=\textwidth]{L3.pdf}')
+print(r'\caption{Поверхность, отражающая зависимость критерия от параметров}')
+print(r'\end{figure}')
+\end{pycode}
+
+Вывод: поверхность выпуклая, минимум выраженный.
+
+\subsection{Пример 4: параметры в матрице $Q$}
+
+% define, create model 4
+\begin{pycode}[model4]
+F = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+C = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+G = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+H = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+x0_m = lambda th: [[0.],
+                   [0.]]
+
+x0_c = lambda th: [[0.1, 0.],
+                   [0., 0.1]]
+
+w_c = lambda th: [[th[0], 0.],
+                  [0., th[1]]]
+
+v_c = lambda th: [[0.15, 0.],
+                  [0., 0.15]]
+
+th_true = [0.2, 0.2]
+
+m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th_true)
+\end{pycode}
+
+\[
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} x_1(t_k) \\ x_2(t_k) \end{pmatrix} +
+  \begin{pmatrix} u_1(t_k) \\ u_2(t_k) \end{pmatrix}
+  + \begin{pmatrix} w_1(t_k) \\ w_2(t_k) \end{pmatrix}
+\]
+\[
+  \begin{pmatrix} y_1(\fut) \\ y_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} +
+  \begin{pmatrix} v_1(\fut) \\ v_2(\fut) \end{pmatrix}
+\]
+\[
+  Q = \begin{pmatrix} \theta_1 & 0 \\ 0 & \theta_2 \end{pmatrix},\
+\]
+
+Истинные значения параметров
+$\theta_{true} = \begin{pmatrix} 0.2 & 0.2 \end{pmatrix}$
+
+Область оценивания: $0.01 \le \theta_i \le 0.2$, $i = 1, \ldots, s$.
+
+Остальные условия остаются такими же, как в примере 1.
+
+% simulate response, fit model, dump results
+\begin{pycode}[model4]
+N = 100
+u = np.ones([2, N])
+u = u * 10
+
+# run simulation
+rez = m.sim(u)  # TODO: return dictionary or named tuple
+y = rez[1]
+
+yhat_true = m.yhat(u=u, y=y)
+
+th_init = [0.2, 0.1]
+
+loss_true = m.lik(u=u, y=y)
+loss_init = m.lik(u=u, y=y, th=th_init)
+
+bounds = [(0.01, 0.3)] * 2
+
+rez = m.mle_fit(th=th_init, y=y, u=u, bounds=bounds)
+
+th_e = rez['x']
+loss_e = rez['fun']
+
+yhat_e = m.yhat(u=u, y=y, th=th_e)
+
+data = {'loss_init': loss_init,
+        'loss_true': loss_true,
+        'th_e': th_e,
+        'loss_e': loss_e,
+        'th_true': th_true,
+        'yhat_true': yhat_true,
+        'yhat_e': yhat_e}
+
+with open('./data/data4.pkl', 'wb') as f:
+    pkl.dump(data, f)
+\end{pycode}
+
+% load results data and print their values below
+\begin{pycode}
+filepath = './data/data4.pkl'
+pytex.add_dependencies(filepath)
+with open(filepath, 'rb') as f:
+  data = pkl.load(f)
+
+loss_true = data['loss_true']
+loss_init = data['loss_init']
+
+loss_e = data['loss_e']
+
+th_e = data['th_e']
+th_e_m = np.matrix(th_e)
+th_e = np.around(th_e_m, 6)
+th_e = pylatex.Matrix(th_e, mtype='b')
+th_e = th_e.dumps()
+
+th_t = data['th_true']
+th_t = np.matrix(th_t)
+
+rtol = np.linalg.norm(th_t - th_e_m) / np.linalg.norm(th_t)
+rtol = "%.6f" % (rtol * 100)
+
+yhat_t = data['yhat_true']
+yhat_e = data['yhat_e']
+rtoly = np.linalg.norm(yhat_t - yhat_e) / np.linalg.norm(yhat_t)
+rtoly = "%.6f" % (rtoly * 100)
+\end{pycode}
+
+\subsubsection{Оценивание параметров: результаты}
+
+Значение критерия при истинных значениях параметров
+\[
+L(\theta_{true}) = \pyc{print("%.3f" % loss_true)}.
+\]
+
+Начальное приближение по параметрам
+\[ % TODO: make reproducible
+\theta_{init} = \begin{bmatrix} 0.2 & 0.1 \end{bmatrix}.
+\]
+
+Значение критерия при начальном приближении
+\[
+L(\theta_{init}) = \pyc{print("%.3f" % loss_init)}.
+\]
+
+Полученные оценки параметров
+\[
+\hat{\theta} = \pyc{print(th_e)}
+\]
+
+Значение критерия 
+\[
+L(\hat{\theta}) = \pyc{print("%.3f" % loss_e)}
+\]
+
+Относительная погрешность в пространстве параметров:
+\[
+\rtol{\theta} = \pyc{print(rtol)} \%
+\]
+
+Относительная погрешность в пространстве откликов:
+\[
+\rtol{y} = \pyc{print(rtoly)} \%
+\]
+
+График поверхности, отражающей зависимость критерия от параметров представлен
+далее.
+
+% calc for plot
+\begin{pycode}[model4]
+def f(th0, th1, u, y):
+    return m.lik(th=[th0, th1], u=u, y=y)
+
+vf = np.vectorize(f, excluded={'u', 'y'})
+
+X = np.linspace(0.01, 0.2, num=25)
+Y = X
+X, Y = np.meshgrid(X, Y)
+
+Z = vf(X, Y, u=u, y=y)
+
+with open('./data/plot4.pkl', 'wb') as f:
+    pkl.dump([X, Y, Z], f)
+\end{pycode}
+
+% save figure
+\begin{pycode}[plot4]
+depfile = './data/plot4.pkl'
+pytex.add_dependencies(depfile)
+with open(depfile, 'rb') as f:
+    X, Y, Z = pkl.load(f)
+
+def surf_plot_save(X, Y, Z, filepath):
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+
+    surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
+                           linewidth=0, antialiased=False)
+
+    ax.set_xlabel(r'$\theta_1$')
+    ax.set_ylabel(r'$\theta_2$')
+    ax.set_zlabel(r'$L(\theta_1, \theta_2)$')
+
+    ax.zaxis.get_major_formatter().set_powerlimits((0, 1))
+    ax.xaxis.get_major_formatter().set_powerlimits((0, 2))
+
+    plt.savefig(filepath, bbox_inches='tight')
+
+surf_plot_save(X, Y, Z, 'figure/L4.pdf')
+\end{pycode}
+
+% include figure
+\begin{pycode}
+pytex.add_dependencies('./figure/L4.pdf')
+print(r'\begin{figure}[H]')
+print(r'\includegraphics[width=\textwidth]{L4.pdf}')
+print(r'\caption{Поверхность, отражающая зависимость критерия от параметров}')
+print(r'\end{figure}')
+\end{pycode}
+
+Поверхность выпуклая, но выраженного минимума в окрестности истинных значений
+параметров нет.
+
+\subsection{Пример 5: параметры в матрице $R$}
+
+% define, create model 5
+\begin{pycode}[model5]
+F = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+C = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+G = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+H = lambda th: [[1.0, 0.],
+                [0., 1.0]]
+
+x0_m = lambda th: [[0.],
+                   [0.]]
+
+x0_c = lambda th: [[0.1, 0.],
+                   [0., 0.1]]
+
+w_c = lambda th: [[0.05, 0.],
+                  [0., 0.05]]
+
+v_c = lambda th: [[th[0], 0.],
+                  [0., th[1]]]
+
+th_true = [0.2, 0.2]
+
+m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th_true)
+\end{pycode}
+
+\[
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} x_1(t_k) \\ x_2(t_k) \end{pmatrix} +
+  \begin{pmatrix} u_1(t_k) \\ u_2(t_k) \end{pmatrix}
+  + \begin{pmatrix} w_1(t_k) \\ w_2(t_k) \end{pmatrix}
+\]
+\[
+  \begin{pmatrix} y_1(\fut) \\ y_2(\fut) \end{pmatrix} =
+  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} +
+  \begin{pmatrix} v_1(\fut) \\ v_2(\fut) \end{pmatrix}
+\]
+\[
+  R = \begin{pmatrix} \theta_1 & 0 \\ 0 & \theta_2 \end{pmatrix},\
+\]
+
+\subsubsection{Оценивание параметров: результаты}
+
+Истинные значения параметров
+$\theta_{true} = \begin{pmatrix} 0.2 & 0.2 \end{pmatrix}$
+
+Область оценивания: $0.1 \le \theta_i \le 0.3$, $i = 1, \ldots, s$.
+
+Остальные условия остаются такими же, как в примере 1.
+
+% simulate response, fit model, dump results
+\begin{pycode}[model5]
+N = 100
+u = np.ones([2, N])
+u = u * 10
+
+# run simulation
+rez = m.sim(u)  # TODO: return dictionary or named tuple
+y = rez[1]
+
+yhat_true = m.yhat(u=u, y=y)
+
+th_init = [0.3, 0.1]
+
+loss_true = m.lik(u=u, y=y)
+loss_init = m.lik(u=u, y=y, th=th_init)
+
+bounds = [(0.1, 0.3)] * 2
+
+rez = m.mle_fit(th=th_init, y=y, u=u, bounds=bounds)
+
+th_e = rez['x']
+loss_e = rez['fun']
+
+yhat_e = m.yhat(u=u, y=y, th=th_e)
+
+data = {'loss_init': loss_init,
+        'loss_true': loss_true,
+        'th_e': th_e,
+        'loss_e': loss_e,
+        'th_true': th_true,
+        'yhat_true': yhat_true,
+        'yhat_e': yhat_e}
+
+with open('./data/data5.pkl', 'wb') as f:
+    pkl.dump(data, f)
+\end{pycode}
+
+% load results data and print their values below
+\begin{pycode}
+filepath = './data/data5.pkl'
+pytex.add_dependencies(filepath)
+with open(filepath, 'rb') as f:
+  data = pkl.load(f)
+
+loss_true = data['loss_true']
+loss_init = data['loss_init']
+
+loss_e = data['loss_e']
+
+th_e = data['th_e']
+th_e_m = np.matrix(th_e)
+th_e = np.around(th_e_m, 6)
+th_e = pylatex.Matrix(th_e, mtype='b')
+th_e = th_e.dumps()
+
+th_t = data['th_true']
+th_t = np.matrix(th_t)
+
+rtol = np.linalg.norm(th_t - th_e_m) / np.linalg.norm(th_t)
+rtol = "%.6f" % (rtol * 100)
+
+yhat_t = data['yhat_true']
+yhat_e = data['yhat_e']
+rtoly = np.linalg.norm(yhat_t - yhat_e) / np.linalg.norm(yhat_t)
+rtoly = "%.6f" % (rtoly * 100)
+\end{pycode}
+
+\subsubsection{Оценивание параметров: результаты}
+
+Значение критерия при истинных значениях параметров
+\[
+L(\theta_{true}) = \pyc{print("%.3f" % loss_true)}.
+\]
+
+Начальное приближение по параметрам
+\[ % TODO: make reproducible
+\theta_{init} = \begin{bmatrix} 0.2 & 0.1 \end{bmatrix}.
+\]
+
+Значение критерия при начальном приближении
+\[
+L(\theta_{init}) = \pyc{print("%.3f" % loss_init)}.
+\]
+
+Полученные оценки параметров
+\[
+\hat{\theta} = \pyc{print(th_e)}
+\]
+
+Значение критерия 
+\[
+L(\hat{\theta}) = \pyc{print("%.3f" % loss_e)}
+\]
+
+Относительная погрешность в пространстве параметров:
+\[
+\rtol{\theta} = \pyc{print(rtol)} \%
+\]
+
+Относительная погрешность в пространстве откликов:
+\[
+\rtol{y} = \pyc{print(rtoly)} \%
+\]
+
+График поверхности, отражающей зависимость критерия от параметров представлен
+далее.
+
+% calc for plot
+\begin{pycode}[model5]
+def f(th0, th1, u, y):
+    return m.lik(th=[th0, th1], u=u, y=y)
+
+vf = np.vectorize(f, excluded={'u', 'y'})
+
+X = np.linspace(0.01, 0.2, num=25)
+Y = X
+X, Y = np.meshgrid(X, Y)
+
+Z = vf(X, Y, u=u, y=y)
+
+with open('./data/plot5.pkl', 'wb') as f:
+    pkl.dump([X, Y, Z], f)
+\end{pycode}
+
+% save figure
+\begin{pycode}[plot5]
+depfile = './data/plot5.pkl'
+pytex.add_dependencies(depfile)
+with open(depfile, 'rb') as f:
+    X, Y, Z = pkl.load(f)
+
+def surf_plot_save(X, Y, Z, filepath):
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+
+    surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
+                           linewidth=0, antialiased=False)
+
+    ax.set_xlabel(r'$\theta_1$')
+    ax.set_ylabel(r'$\theta_2$')
+    ax.set_zlabel(r'$L(\theta_1, \theta_2)$')
+
+    ax.zaxis.get_major_formatter().set_powerlimits((0, 1))
+    ax.xaxis.get_major_formatter().set_powerlimits((0, 2))
+
+    plt.savefig(filepath, bbox_inches='tight')
+
+surf_plot_save(X, Y, Z, 'figure/L5.pdf')
+\end{pycode}
+
+% include figure
+\begin{pycode}
+pytex.add_dependencies('./figure/L5.pdf')
+print(r'\begin{figure}[H]')
+print(r'\includegraphics[width=\textwidth]{L5.pdf}')
+print(r'\caption{Поверхность, отражающая зависимость критерия от параметров}')
+print(r'\end{figure}')
+\end{pycode}
+
+\section{Заключение}
+
+Матрицы перехода, управления, наблюдений хорошо поддаются оцениванию.
+Ковариационные матрицы шумов объекта, наблюдений плохо поддаются оцениванию.
+
+\begin{thebibliography}{9}
+
+\begin{sloppypar}
+
+\bibitem{mono} Активная параметрическая идентификация стохастических линейных
+  систем: монография / В.И. Денисов, В.М. Чубич, О.С. Черникова, Д.И. Бобылева.
+    --- Новосибирск : Изд-во НГТУ, 2009. --- 192 с.
+    (Серия <<Монографии НГТУ>>).
+
+\end{sloppypar}
+
+\end{thebibliography}
+
+\renewcommand{\baselinestretch}{1}
+
+\begin{appendices}
+
+\section{Исходные тексты программ}
+
+% TODO: make pycode, within it print pyverbatim, read source file and print it
+\begin{pyverbatim}[][fontsize=\small]
+
+import math
+import tensorflow as tf
+import control
+import numpy as np
+from tensorflow.contrib.distributions import MultivariateNormalFullCovariance
+import scipy
+
+
+class Model(object):
+
+    # TODO: introduce some more default argument values, check types, cast if
+    # neccessary
+    def __init__(self, F, C, G, H, x0_mean, x0_cov, w_cov, v_cov, th):
+        """
+        Arguments are all callables (functions) of 'th' returning python lists
+        except for 'th' itself (of course)
+        """
+
+        # TODO: evaluate and cast everything to numpy matrices first
+        # TODO: cast floats, ints to numpy matrices
+        # TODO: allow both constant matrices and callables
+
+        # store arguments, after that check them
+        self.__F = F
+        self.__C = C
+        self.__G = G
+        self.__H = H
+        self.__x0_mean = x0_mean
+        self.__x0_cov = x0_cov
+        self.__w_cov = w_cov
+        self.__v_cov = v_cov
+        self.__th = th
+
+        # evaluate all functions
+        th = np.array(th)
+        F = np.array(F(th))
+        C = np.array(C(th))
+        H = np.array(H(th))
+        G = np.array(G(th))
+        w_cov = np.array(w_cov(th))    # Q
+        v_cov = np.array(v_cov(th))    # R
+        x0_m = np.array(x0_mean(th))
+        x0_cov = np.array(x0_cov(th))  # P_0
+
+        # get dimensions and store them as well
+        self.__n = n = F.shape[0]
+        self.__m = m = H.shape[0]
+        self.__p = p = G.shape[1]
+        self.__r = r = C.shape[1]
+
+        # generate means
+        w_mean = np.zeros([p, 1], np.float64)
+        v_mean = np.zeros([m, 1], np.float64)
+
+        # and store them
+        self.__w_mean = w_mean
+        self.__v_mean = v_mean
+
+        # check conformability
+        u = np.ones([r, 1])
+        # generate random vectors
+        # squeeze, because mean must be one dimensional
+        x = np.random.multivariate_normal(x0_m.squeeze(), x0_cov)
+        w = np.random.multivariate_normal(w_mean.squeeze(), w_cov)
+        v = np.random.multivariate_normal(v_mean.squeeze(), v_cov)
+
+        # shape them as column-vectors
+        x = x.reshape([n, 1])
+        w = w.reshape([p, 1])
+        v = v.reshape([m, 1])
+
+        # if model is not conformable, exception would be raised (thrown) here
+        F * x + C * u + G * w
+        H * x + v
+
+        # check controllability, stability, observability
+        self.__validate()
+
+        # if the execution reached here, all is fine so
+        # define corresponding computational tensorflow graphs
+        self.__define_observations_simulation()
+        self.__define_likelihood_computation()
+
+    def __define_observations_simulation(self):
+        # TODO: reduce code not to create extra operations
+
+        self.__sim_graph = tf.Graph()
+        sim_graph = self.__sim_graph
+
+        r = self.__r
+        m = self.__m
+        n = self.__n
+        p = self.__p
+
+        x0_mean = self.__x0_mean
+        x0_cov = self.__x0_cov
+
+        with sim_graph.as_default():
+
+            th = tf.placeholder(tf.float64, shape=[None], name='th')
+
+            # TODO: this should be continuous function of time
+            # but try to let pass array also
+            u = tf.placeholder(tf.float64, shape=[r, None], name='u')
+
+            t = tf.placeholder(tf.float64, shape=[None], name='t')
+
+            # TODO: refactor
+
+            # FIXME: gradient of py_func is None
+            # TODO: embed function itself in the graph, must rebuild the graph
+            # if the structure of the model change
+            # use tf.convert_to_tensor
+            F = tf.convert_to_tensor(self.__F(th), tf.float64)
+            F.set_shape([n, n])
+
+            C = tf.convert_to_tensor(self.__C(th), tf.float64)
+            C.set_shape([n, r])
+
+            G = tf.convert_to_tensor(self.__G(th), tf.float64)
+            G.set_shape([n, p])
+
+            H = tf.convert_to_tensor(self.__H(th), tf.float64)
+            H.set_shape([m, n])
+
+            x0_mean = tf.convert_to_tensor(x0_mean(th), tf.float64)
+            x0_mean = tf.squeeze(x0_mean)
+
+            x0_cov = tf.convert_to_tensor(x0_cov(th), tf.float64)
+            x0_cov.set_shape([n, n])
+
+            x0_dist = MultivariateNormalFullCovariance(x0_mean, x0_cov,
+                                                       name='x0_dist')
+
+            Q = tf.convert_to_tensor(self.__w_cov(th), tf.float64)
+            Q.set_shape([p, p])
+
+            w_mean = self.__w_mean.squeeze()
+            w_dist = MultivariateNormalFullCovariance(w_mean, Q, name='w_dist')
+
+            R = tf.convert_to_tensor(self.__v_cov(th), tf.float64)
+            R.set_shape([m, m])
+            v_mean = self.__v_mean.squeeze()
+            v_dist = MultivariateNormalFullCovariance(v_mean, R, name='v_dist')
+
+            def sim_obs(x):
+                v = v_dist.sample()
+                v = tf.reshape(v, [m, 1])
+                y = H @ x + v  # the syntax is valid for Python >= 3.5
+                return y
+
+            def sim_loop_cond(x, y, t, k):
+                N = tf.stack([tf.shape(t)[0]])
+                N = tf.reshape(N, ())
+                return tf.less(k, N-1)
+
+            def sim_loop_body(x, y, t, k):
+
+                # TODO: this should be function of time
+                u_t_k = tf.slice(u, [0, k], [r, 1])
+
+                def state_propagate(x):
+                    w = w_dist.sample()
+                    w = tf.reshape(w, [p, 1])
+                    Fx = tf.matmul(F, x, name='Fx')
+                    Cu = tf.matmul(C, u_t_k, name='Cu')
+                    Gw = tf.matmul(G, w, name='Gw')
+                    x = Fx + Cu + Gw
+                    return x
+
+                tk = tf.slice(t, [k], [2], 'tk')
+
+                x_k = x[:, -1]
+                x_k = tf.reshape(x_k, [n, 1])
+
+                x_k = state_propagate(x_k)
+
+                y_k = sim_obs(x_k)
+
+                # TODO: stack instead of concat
+                x = tf.concat([x, x_k], 1)
+                y = tf.concat([y, y_k], 1)
+
+                k = k + 1
+
+                return x, y, t, k
+
+            x = x0_dist.sample(name='x0_sample')
+            x = tf.reshape(x, [n, 1], name='x')
+
+            # this zeroth measurement should be thrown away
+            y = sim_obs(x)
+            k = tf.constant(0, name='k')
+
+            shape_invariants = [tf.TensorShape([n, None]),
+                                tf.TensorShape([m, None]),
+                                t.get_shape(),
+                                k.get_shape()]
+
+            sim_loop = tf.while_loop(sim_loop_cond, sim_loop_body,
+                                     [x, y, t, k], shape_invariants,
+                                     name='sim_loop')
+
+            self.__sim_loop_op = sim_loop
+
+    # defines graph
+    def __define_likelihood_computation(self):
+
+        self.__lik_graph = tf.Graph()
+        lik_graph = self.__lik_graph
+
+        r = self.__r
+        m = self.__m
+        n = self.__n
+        p = self.__p
+
+        x0_mean = self.__x0_mean
+        x0_cov = self.__x0_cov
+
+        with lik_graph.as_default():
+            # FIXME: Don't Repeat Yourself (in simulation and here)
+            th = tf.placeholder(tf.float64, shape=[None], name='th')
+            u = tf.placeholder(tf.float64, shape=[r, None], name='u')
+            t = tf.placeholder(tf.float64, shape=[None], name='t')
+            y = tf.placeholder(tf.float64, shape=[m, None], name='y')
+
+            N = tf.stack([tf.shape(t)[0]])
+            N = tf.reshape(N, ())
+
+            F = tf.convert_to_tensor(self.__F(th), tf.float64)
+            F.set_shape([n, n])
+
+            C = tf.convert_to_tensor(self.__C(th), tf.float64)
+            C.set_shape([n, r])
+
+            G = tf.convert_to_tensor(self.__G(th), tf.float64)
+            G.set_shape([n, p])
+
+            H = tf.convert_to_tensor(self.__H(th), tf.float64)
+            H.set_shape([m, n])
+
+            x0_mean = tf.convert_to_tensor(x0_mean(th), tf.float64)
+            x0_mean.set_shape([n, 1])
+
+            P_0 = tf.convert_to_tensor(x0_cov(th), tf.float64)
+            P_0.set_shape([n, n])
+
+            Q = tf.convert_to_tensor(self.__w_cov(th), tf.float64)
+            Q.set_shape([p, p])
+
+            R = tf.convert_to_tensor(self.__v_cov(th), tf.float64)
+            R.set_shape([m, m])
+
+            I = tf.eye(n, n, dtype=tf.float64)
+
+            def lik_loop_cond(k, P, S, t, u, x, y):
+                return tf.less(k, N-1)
+
+            def lik_loop_body(k, P, S, t, u, x, y):
+
+                # TODO: this should be function of time
+                u_t_k = tf.slice(u, [0, k], [r, 1])
+
+                # k+1, cause zeroth measurement should not be taken into account
+                y_k = tf.slice(y, [0, k+1], [m, 1])
+
+                t_k = tf.slice(t, [k], [2], 't_k')
+
+                # TODO: extract Kalman filter to a separate class
+                def state_predict(x):
+                    Fx = tf.matmul(F, x, name='Fx')
+                    Cu = tf.matmul(C, u_t_k, name='Cu')
+                    x = Fx + Cu
+                    return x
+
+                def covariance_predict(P):
+                    GQtG = tf.matmul(G @ Q, G, transpose_b=True)
+                    PtF = tf.matmul(P, F, transpose_b=True)
+                    P = tf.matmul(F, P) + PtF + GQtG
+                    return P
+
+                x = state_predict(x)
+
+                P = covariance_predict(P)
+
+                E = y_k - tf.matmul(H, x)
+
+                B = tf.matmul(H @ P, H, transpose_b=True) + R
+                invB = tf.matrix_inverse(B)
+
+                K = tf.matmul(P, H, transpose_b=True) @ invB
+
+                S_k = tf.matmul(E, invB @ E, transpose_a=True)
+                S_k = 0.5 * (S_k + tf.log(tf.matrix_determinant(B)))
+
+                S = S + S_k
+
+                # state update
+                x = x + tf.matmul(K, E)
+
+                # covariance update
+                P = (I - K @ H) @ P
+
+                k = k + 1
+
+                return k, P, S, t, u, x, y
+
+            k = tf.constant(0, name='k')
+            P = P_0
+            S = tf.constant(0.0, dtype=tf.float64, shape=[1, 1], name='S')
+            x = x0_mean
+
+            # TODO: make a named tuple of named list
+            lik_loop = tf.while_loop(lik_loop_cond, lik_loop_body,
+                                     [k, P, S, t, u, x, y], name='lik_loop')
+
+            dS = tf.gradients(lik_loop[2], th)
+
+            self.__lik_loop_op = lik_loop
+            self.__dS = dS
+
+    def __isObservable(self, th=None):
+        if th is None:
+            th = self.__th
+        F = np.array(self.__F(th))
+        C = np.array(self.__C(th))
+        n = self.__n
+        obsv_matrix = control.obsv(F, C)
+        rank = np.linalg.matrix_rank(obsv_matrix)
+        return rank == n
+
+    def __isControllable(self, th=None):
+        if th is None:
+            th = self.__th
+        F = np.array(self.__F(th))
+        C = np.array(self.__C(th))
+        n = self.__n
+        ctrb_matrix = control.ctrb(F, C)
+        rank = np.linalg.matrix_rank(ctrb_matrix)
+        return rank == n
+
+    # FIXME: fix to discrete
+    def __isStable(self, th=None):
+        if th is None:
+            th = self.__th
+        F = np.array(self.__F(th))
+        eigv = np.linalg.eigvals(F)
+        real_parts = np.real(eigv)
+        return np.all(real_parts < 0)
+
+    def __validate(self, th=None):
+        # FIXME: do not raise exceptions
+        # TODO: prove, print matrices and their criteria
+        if not self.__isControllable(th):
+            # raise Exception('''Model is not controllable. Set different
+            #                structure or parameters values''')
+            pass
+
+        if not self.__isStable(th):
+            # raise Exception('''Model is not stable. Set different structure or
+            #                parameters values''')
+            pass
+
+        if not self.__isObservable(th):
+            # raise Exception('''Model is not observable. Set different
+            #                structure or parameters values''')
+            pass
+
+    def sim(self, u, th=None):
+        if th is None:
+            th = self.__th
+
+        k = u.shape[1]
+        t = np.linspace(0, k-1, k)
+
+        self.__validate(th)
+        g = self.__sim_graph
+
+        if t.shape[0] != u.shape[1]:
+            raise Exception('''t.shape[0] != u.shape[1]''')
+
+        # run simulation graph
+        with tf.Session(graph=g) as sess:
+            t_ph = g.get_tensor_by_name('t:0')
+            th_ph = g.get_tensor_by_name('th:0')
+            u_ph = g.get_tensor_by_name('u:0')
+            rez = sess.run(self.__sim_loop_op, {th_ph: th, t_ph: t, u_ph: u})
+
+        return rez
+
+    def lik(self, u, y, th=None):
+
+        # hack continuous to discrete system
+        k = u.shape[1]
+        t = np.linspace(0, k-1, k)
+
+        if th is None:
+            th = self.__th
+
+        # to numpy 1D array
+        th = np.array(th).squeeze()
+
+        # self.__validate(th)
+        g = self.__lik_graph
+
+        # TODO: check for y also
+        if t.shape[0] != u.shape[1]:
+            raise Exception('''t.shape[0] != u.shape[1]''')
+
+        # run lik graph
+        with tf.Session(graph=g) as sess:
+            t_ph = g.get_tensor_by_name('t:0')
+            th_ph = g.get_tensor_by_name('th:0')
+            u_ph = g.get_tensor_by_name('u:0')
+            y_ph = g.get_tensor_by_name('y:0')
+            rez = sess.run(self.__lik_loop_op, {th_ph: th, t_ph: t, u_ph: u,
+                                                y_ph: y})
+
+        # FIXME: fix to discrete
+        N = len(t)
+        m = y.shape[0]
+        S = rez[2]
+        S = S + N*m * 0.5 + np.log(2*math.pi)
+
+        return S
+
+    def __L(self, th, u, y):
+        return self.lik(u, y, th)
+
+    def __dL(self, th, u, y):
+        return self.dL(u, y, th)
+
+    def dL(self, u, y, th=None):
+        if th is None:
+            th = self.__th
+
+        # hack continuous to discrete system
+        k = u.shape[1]
+        t = np.linspace(0, k-1, k)
+
+        # to 1D numpy array
+        th = np.array(th).squeeze()
+
+        # self.__validate(th)
+        g = self.__lik_graph
+
+        if t.shape[0] != u.shape[1]:
+            raise Exception('''t.shape[0] != u.shape[1]''')
+
+        # run lik graph
+        with tf.Session(graph=g) as sess:
+            t_ph = g.get_tensor_by_name('t:0')
+            th_ph = g.get_tensor_by_name('th:0')
+            u_ph = g.get_tensor_by_name('u:0')
+            y_ph = g.get_tensor_by_name('y:0')
+            rez = sess.run(self.__dS, {th_ph: th, t_ph: t, u_ph: u, y_ph: y})
+
+        return rez[0]
+
+    def mle_fit(self, th, u, y):
+        # TODO: call slsqp
+        th0 = th
+        th = scipy.optimize.minimize(self.__L, th0, args=(u, y),
+                                     jac=self.__dL, options={'disp': True})
+        return th
+\end{pyverbatim}
+
+\end{appendices}
+
+\end{document}
+
+# vim: ts=2 sw=2
