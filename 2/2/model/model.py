@@ -714,16 +714,6 @@ class Model(object):
         sign, logdet = np.linalg.slogdet(Mn)
         return -logdet
 
-    def d_crit_opt_grad(self, plan, u, th=None):
-        # flatten plan
-        x, p = plan
-        x = np.array(x).flatten()
-        p = np.array(p)
-        q = len(p)
-        plan = np.hstack([x, p])  # 1d array
-        grad = self.__d_crit_to_opt_grad_f(plan, q, u, th)
-        return grad
-
     def __d_crit_to_opt_grad(self, plan, q, u, th=None):
         plan = np.array(plan)
         grad = self.__d_crit_to_opt_grad_f(plan, q, u, th)
