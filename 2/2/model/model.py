@@ -83,8 +83,8 @@ class Model(object):
         v = v.reshape([m, 1])
 
         # if model is not conformable, exception would be raised (thrown) here
-        F * x + C * u + G * w
-        H * x + v
+        F @ x + C @ u + G @ w
+        H @ x + v
 
         # check controllability, stability, observability
         # self.__validate()
