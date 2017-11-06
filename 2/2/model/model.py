@@ -14,7 +14,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 class Model(object):
-
     # TODO: introduce some more default argument values, check types, cast if
     # neccessary
     def __init__(self, F, C, G, H, x0_mean, x0_cov, w_cov, v_cov, th):
@@ -25,11 +24,20 @@ class Model(object):
 
         # TODO: check if there are extra components in 'th'
         # TODO: evaluate and cast everything to numpy matrices first
-        # TODO: cast floats, ints to numpy matrices
+        # TODO: cast scalars to numpy matrices
         # TODO: allow both constant matrices and callables
 
         def wrap_np(f):
             return lambda th: np.array(f(th), ndmin=2)
+
+        self.__tf_F = F
+        self.__tf_C = C
+        self.__tf_G = G
+        self.__tf_H = H
+        self.__tf_x0_mean = x0_mean
+        self.__tf_x0_cov = x0_cov
+        self.__tf_w_cov = w_cov
+        self.__tf_v_cov = v_cov
 
         # store arguments, after that check them
         F = self.__F = wrap_np(F)
@@ -94,6 +102,8 @@ class Model(object):
         self.__define_observations_simulation()
         self.__define_likelihood_computation()
 
+        self.__d_crit_to_opt_grad_f = autograd.grad(self.__d_crit_to_optimize)
+
     def __define_observations_simulation(self):
         # TODO: reduce code not to create extra operations
 
@@ -104,13 +114,15 @@ class Model(object):
         m = self.__m
         n = self.__n
         p = self.__p
+        s = len(self.__th)
 
-        x0_mean = self.__x0_mean
-        x0_cov = self.__x0_cov
+        x0_mean = self.__tf_x0_mean
+        x0_cov = self.__tf_x0_cov
 
         with sim_graph.as_default():
 
-            th = tf.placeholder(tf.float64, shape=[None], name='th')
+            # FIXME: shape must be [1 x s]
+            th = tf.placeholder(tf.float64, shape=(s), name='th')
 
             # TODO: this should be continuous function of time
             # but try to let pass array also
@@ -124,16 +136,16 @@ class Model(object):
             # TODO: embed function itself in the graph, must rebuild the graph
             # if the structure of the model change
             # use tf.convert_to_tensor
-            F = tf.convert_to_tensor(self.__F(th), tf.float64)
+            F = tf.convert_to_tensor(self.__tf_F(th), tf.float64)
             F.set_shape([n, n])
 
-            C = tf.convert_to_tensor(self.__C(th), tf.float64)
+            C = tf.convert_to_tensor(self.__tf_C(th), tf.float64)
             C.set_shape([n, r])
 
-            G = tf.convert_to_tensor(self.__G(th), tf.float64)
+            G = tf.convert_to_tensor(self.__tf_G(th), tf.float64)
             G.set_shape([n, p])
 
-            H = tf.convert_to_tensor(self.__H(th), tf.float64)
+            H = tf.convert_to_tensor(self.__tf_H(th), tf.float64)
             H.set_shape([m, n])
 
             x0_mean = tf.convert_to_tensor(x0_mean(th), tf.float64)
@@ -145,15 +157,15 @@ class Model(object):
             x0_dist = MultivariateNormalFullCovariance(x0_mean, x0_cov,
                                                        name='x0_dist')
 
-            Q = tf.convert_to_tensor(self.__w_cov(th), tf.float64)
+            Q = tf.convert_to_tensor(self.__tf_w_cov(th), tf.float64)
             Q.set_shape([p, p])
 
-            w_mean = self.__w_mean.squeeze()
+            w_mean = self.__w_mean.flatten()
             w_dist = MultivariateNormalFullCovariance(w_mean, Q, name='w_dist')
 
-            R = tf.convert_to_tensor(self.__v_cov(th), tf.float64)
+            R = tf.convert_to_tensor(self.__tf_v_cov(th), tf.float64)
             R.set_shape([m, m])
-            v_mean = self.__v_mean.squeeze()
+            v_mean = self.__v_mean.flatten()
             v_dist = MultivariateNormalFullCovariance(v_mean, R, name='v_dist')
 
             def sim_obs(x):
@@ -227,8 +239,8 @@ class Model(object):
         n = self.__n
         p = self.__p
 
-        x0_mean = self.__x0_mean
-        x0_cov = self.__x0_cov
+        x0_mean = self.__tf_x0_mean
+        x0_cov = self.__tf_x0_cov
 
         with lik_graph.as_default():
             # FIXME: Don't Repeat Yourself (in simulation and here)
@@ -240,16 +252,16 @@ class Model(object):
             N = tf.stack([tf.shape(t)[0]])
             N = tf.reshape(N, ())
 
-            F = tf.convert_to_tensor(self.__F(th), tf.float64)
+            F = tf.convert_to_tensor(self.__tf_F(th), tf.float64)
             F.set_shape([n, n])
 
-            C = tf.convert_to_tensor(self.__C(th), tf.float64)
+            C = tf.convert_to_tensor(self.__tf_C(th), tf.float64)
             C.set_shape([n, r])
 
-            G = tf.convert_to_tensor(self.__G(th), tf.float64)
+            G = tf.convert_to_tensor(self.__tf_G(th), tf.float64)
             G.set_shape([n, p])
 
-            H = tf.convert_to_tensor(self.__H(th), tf.float64)
+            H = tf.convert_to_tensor(self.__tf_H(th), tf.float64)
             H.set_shape([m, n])
 
             x0_mean = tf.convert_to_tensor(x0_mean(th), tf.float64)
@@ -258,10 +270,10 @@ class Model(object):
             P_0 = tf.convert_to_tensor(x0_cov(th), tf.float64)
             P_0.set_shape([n, n])
 
-            Q = tf.convert_to_tensor(self.__w_cov(th), tf.float64)
+            Q = tf.convert_to_tensor(self.__tf_w_cov(th), tf.float64)
             Q.set_shape([p, p])
 
-            R = tf.convert_to_tensor(self.__v_cov(th), tf.float64)
+            R = tf.convert_to_tensor(self.__tf_v_cov(th), tf.float64)
             R.set_shape([m, m])
 
             I = tf.eye(n, n, dtype=tf.float64)
@@ -347,9 +359,9 @@ class Model(object):
         if th is None:
             th = self.__th
         F = np.array(self.__F(th))
-        C = np.array(self.__C(th))
+        H = np.array(self.__H(th))
         n = self.__n
-        obsv_matrix = control.obsv(F, C)
+        obsv_matrix = control.obsv(F, H)
         rank = np.linalg.matrix_rank(obsv_matrix)
         return rank == n
 
@@ -369,8 +381,8 @@ class Model(object):
             th = self.__th
         F = np.array(self.__F(th))
         eigv = np.linalg.eigvals(F)
-        real_parts = np.real(eigv)
-        return np.all(real_parts < 0)
+        abs_vals = np.abs(eigv)
+        return np.all(abs_vals < 1)
 
     def __validate(self, th=None):
         # FIXME: do not raise exceptions
@@ -394,6 +406,8 @@ class Model(object):
         if th is None:
             th = self.__th
 
+        r = self.__r
+        u = np.array(u).reshape([r, -1])
         k = u.shape[1]
         t = np.linspace(0, k-1, k)
 
@@ -410,7 +424,7 @@ class Model(object):
             u_ph = g.get_tensor_by_name('u:0')
             rez = sess.run(self.__sim_loop_op, {th_ph: th, t_ph: t, u_ph: u})
 
-        return rez
+        return rez[1]
 
     def yhat(self, u, y, th=None):
         if th is None:
@@ -519,8 +533,9 @@ class Model(object):
                                       bounds=bounds, jac=self.__dL)
         return rez
 
-    def mle_fit_plan(self):
-        pass
+    def mle_fit_plan(self, plan, th, bounds=None):
+        th0 = th
+        X, p = plan
 
     def fim(self, u, x0=None, th=None):
         """
@@ -620,7 +635,7 @@ class Model(object):
         N = u.shape[1]
 
         if u.shape[0] != C.shape[1]:
-            raise Exception('invalid shape of 'u'')
+            raise Exception('invalid shape of \'u\'')
 
         for k in range(N):
             if k == 0:
@@ -690,61 +705,65 @@ class Model(object):
         ''' plan: list of 'x' and 'p' '''
         ''' x: 3d np array [q x r x N] '''
         ''' p: list or 1d np array '''
-
         x, p = plan
         x = np.array(x, ndmin=2)
         p = np.array(p)
 
-        # FIXME:
-        # validate plan
+        # FIXME, TODO: validate plan
         # for x_i, p_i in zip(x, p):
         #    if len(x_i) != self.__n:
-                # raise Exception('invalid plan: len(x_i) != n')
+        #        raise Exception('invalid plan: len(x_i) != n')
+
         Mn = 0
 
         # extract p, x and compute fim for every point of the plan
         for x_i, p_i in zip(x, p):
-            Mn += p_i * self.fim(u=x, x0=None, th=th)  # TODO: compute in parallel
-
+            # TODO: compute in parallel
+            Mn += p_i * self.fim(u=x_i, x0=None, th=th)
         return Mn
 
-    # calls norm_fim and logdet it
     def d_opt_crit(self, plan, th=None):
+        ''' plan: list of 'x' and 'p' '''
+        ''' x: 3d np array [q x r x N] '''
+        ''' p: list or 1d np array '''
         Mn = self.norm_fim(plan, th)
         sign, logdet = np.linalg.slogdet(Mn)
         return -logdet
 
-    def __d_crit_to_opt_grad(self, plan, q, u, th=None):
+    def __d_crit_to_opt_grad(self, plan, q, th=None):
+        ''' plan is 1D np.array or list '''
         plan = np.array(plan)
-        grad = self.__d_crit_to_opt_grad_f(plan, q, u, th)
+        grad = self.__d_crit_to_opt_grad_f(plan, q, th)
         return grad
 
-    # this is wraps around self.d_opt_crit() above
+    # this wraps self.d_opt_crit() above
     # for scipy.optimize.minimize
-    def __d_crit_to_optimize(self, plan, q, u, th=None):
+    def __d_crit_to_optimize(self, plan, q, th=None):
         # unflatten plan
+        r = self.__r
         p = plan[-q:]
         x = plan[:-q]
-        x = np.array_split(x, q)
+        x = np.reshape(x, [q, r, -1])
         plan = [x, p]
-        crit = self.d_opt_crit(plan, u, th)
+        crit = self.d_opt_crit(plan, th)
         return crit
 
-    def direct(self, plan0, u, th=None, use_grad=True):
-        ''' plan0: list of: list (or 2d np.array) of 'x0' and list of 'p' '''
+    # TODO: take bounds
+    def direct(self, plan0, th=None):
+        ''' plan0: list of: list (or 3D np.array) of 'u' and list of 'p' '''
         n = self.__n
+        r = self.__r
 
         x, p = plan0
-
-        for x_i, p_i in zip(x, p):
-            if len(x_i) != n:
-                raise Exception('invalid plan: len(x_i) != n')
+        x = np.array(x)
+        p = np.array(p)
 
         q = len(p)
+        N = x.shape[-1]
 
-        x_bounds = [(-1, 1)] * q * n
+        x_bounds = [(-1, 1)] * q * r * N
         p_bounds = [(0, 1)] * q
-        bounds = x_bounds + p_bounds
+        bounds = x_bounds + p_bounds  # concat lists
 
         def heq(x):
             p = x[-q:]
@@ -752,19 +771,17 @@ class Model(object):
 
         constraints = {'type': 'eq', 'fun': heq}
 
-        flatten = lambda l: [item for sublist in l for item in sublist]
+        x0 = x.flatten()
+        x0 = np.hstack([x0, p])
 
-        # FIXME: if x and p are arrays, this will sum them
-        x0 = flatten(x) + p
-
-        # pass jacobian
         rez = scipy.optimize.minimize(fun=self.__d_crit_to_optimize, x0=x0,
-                                      args=(q, u, th), method='SLSQP',
+                                      jac=self.__d_crit_to_opt_grad,
+                                      args=(q, th), method='SLSQP',
                                       constraints=constraints, bounds=bounds)
         new_plan = rez['x']
 
         pn = new_plan[-q:]
-        xn = new_plan[:-q].reshape([q, n])
+        xn = new_plan[:-q].reshape([q, r, N])
         new_plan = [xn, pn]
 
         # TODO: return loss and its jacobian values
@@ -772,7 +789,7 @@ class Model(object):
         return new_plan, rez['fun']
 
     def clean(self, plan, dn=0.5, dp=0.1):
-        ''' plan = [x, p], x is 2d array, p is list '''
+        ''' plan = [x, p], x is 3D array, p is list or 1D np array '''
         x, p = plan
         p = list(p)
 
@@ -786,6 +803,9 @@ class Model(object):
             x = np.delete(x, i, 0)
             p_i = p.pop(i)
             p = [p_j + p_i / len(p) for p_j in p]
+
+        q, r, N = x.shape
+        x = x.reshape([q, -1])
 
         # clean by distance
         while True:
@@ -815,33 +835,39 @@ class Model(object):
 
                 p.append(pn)  # add new weight
 
+        q = len(p)
+        x = x.reshape([q, r, N])
+
         return x, p
 
-    def __mu(self, x, M_plan, u, th):
-        M = self.fim(u=u, x0=x, th=th)
+    # wraps fim()
+    def __mu(self, u, M_plan, th):
+        M = self.fim(u=u, th=th)
         return -np.trace(np.linalg.inv(M_plan) @ M)
 
-    def crit_tau(self, tau, a, plan, u, th):
+    def crit_tau(self, tau, a, plan, th):
         x, p = plan
-        x = np.vstack([x, a])
+        p = list(p)
+        x = np.array(x)
+        a = np.expand_dims(a, 0)  # TODO: set shape explicitly
+        x = np.concatenate([x, a])
         p = [p_i * (1 - tau) for p_i in p]
         p.append(tau)
         plan = [x, p]
-        crit = self.d_opt_crit(plan, u, th)
+        crit = self.d_opt_crit(plan, th)
         return crit
 
-    def rand_plan(self, u):
-        n = self.__n
+    def rand_plan(self, N, bounds=None):
+        r = self.__r
         s = len(self.__th)
-        s2q = lambda s: int((s + 1) * s / 2 + 1)
-        q = s2q(s)
-        x = np.random.uniform(-1, 1, q*n).reshape([q, n])
-        p = [1/q] * q
+        q = int((s + 1) * s / 2 + 1)
+        x = np.random.uniform(-1, 1, [q, r, N])
+        p = [1 / q] * q
         plan = [x, p]
-        crit = self.d_opt_crit(plan, u)
-        return [x, p], crit
+        crit = self.d_opt_crit(plan)
+        return x, p, crit
 
-    def dual(self, plan, u, th=None, d=0.05):
+    def dual(self, plan, th=None, d=0.05):
         ''' plan '''
         dmu = autograd.grad(self.__mu)  # this is *not* time consuming
 
@@ -854,31 +880,31 @@ class Model(object):
 
         eta = len(th)
         n = self.__n
-        X, p = plan
+        r = self.__r
+        X, p = plan  # TODO: make plan class
+        N = X.shape[-1]
 
         crit_tau_grad = autograd.grad(self.crit_tau)
 
-        x_bounds = [(-1, 1)] * n
+        x_bounds = [(-1, 1)] * r * N
 
         while True:
-            M_plan = self.norm_fim(plan, u, th)
+            M_plan = self.norm_fim(plan, th)
 
             while True:
-
-                x_guess = np.random.uniform(-1, 1, n)
+                x_guess = np.random.uniform(-1, 1, [r, N])  # FIXME
 
                 # nlopts <- list(xtol_rel=1e-3, maxeval=1e3)
-                # TODO: pass gradient
                 rez = scipy.optimize.minimize(fun=self.__mu, x0=x_guess,
-                                              args=(M_plan, u, th),
+                                              args=(M_plan, th),
                                               method='SLSQP', jac=dmu,
                                               bounds=x_bounds, tol=None,
                                               options=None)
-                x_opt = rez['x']
+                x_opt = rez['x'].reshape([r, N])
                 mu = -rez['fun']
 
                 if abs(mu - eta) <= d:
-                    return plan, self.d_opt_crit(plan, u)
+                    return plan, self.d_opt_crit(plan)
 
                 if mu > eta:
                     break
@@ -887,21 +913,22 @@ class Model(object):
                 # XXX: this was needed to get non singular tau value,
                 # not sure if it is still needed
                 tau_guess = np.random.uniform(size=1)
-                tau_crit = self.crit_tau(tau_guess, x_opt, copy.deepcopy(plan),
-                        u, th)
+                tau_crit = self.crit_tau(tau_guess, x_opt,
+                                         copy.deepcopy(plan), th)
                 if not np.isnan(tau_crit):
                     break
 
             rez = scipy.optimize.minimize(fun=self.crit_tau, x0=tau_guess,
-                                          args=(x_opt, copy.deepcopy(plan),
-                                              u, th), bounds=[(0, 1)],
+                                          args=(x_opt, copy.deepcopy(plan), th),
+                                          bounds=[(0, 1)],
                                           method='SLSQP', jac=crit_tau_grad)
 
             tau_opt = rez['x']
 
             # add x_opt, tau_opt to plan
             X, p = plan
-            X = np.vstack([X, x_opt])
+            x_opt = np.expand_dims(x_opt, 0)
+            X = np.concatenate([X, x_opt]) # FIXME
             tau_opt = tau_opt[0]
             p = [p_i - tau_opt / len(p) for p_i in p]
             p.append(tau_opt)
