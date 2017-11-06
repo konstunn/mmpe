@@ -1,2 +1,14 @@
-__pycache__
-.ropeproject
+*.fdb_latexmk
+*.fls
+*.swp
+.ropeproject/
+*.exrc
+*.pyc
+*.out
+*.aux
+*.log
+*.pdf
+*.dvi
+*.pytxcode
+pythontex-files-main/
+data
