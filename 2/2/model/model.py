@@ -9,6 +9,7 @@ from tensorflow.contrib.distributions import MultivariateNormalFullCovariance
 import scipy
 import itertools
 import copy
+import operator
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -533,7 +534,45 @@ class Model(object):
                                       bounds=bounds, jac=self.__dL)
         return rez
 
-    def mle_fit_plan(self, plan, th, bounds=None):
+
+    def round_weights(self, p, v):
+        return np.array(self.round_plan([0, p], v)[1])
+
+    def round_plan(self, plan, v):
+        plan = copy.deepcopy(plan)
+        p = np.array(plan[1])
+        q = len(p)
+        sigmaI = np.ceil((v - q) * p)  # 1
+        sigmaII = np.floor(v * p)
+        vI = v - np.sum(sigmaI)  # 2
+        vII = v - np.sum(sigmaII)
+        if vI < vII:
+            sigma = sigmaI
+            v1 = int(vI)
+        else:
+            sigma = sigmaII
+            v1 = int(vII)
+
+        s = np.zeros(q)
+
+        vps = v * p - sigma
+        vps_id = [i for i in range(len(vps))]
+        vps_t = [(val, key) for val, key in zip(vps, vps_id)]
+
+        vps_t = sorted(vps_t, key=operator.itemgetter(0))
+        sorted_id = [elem[1] for elem in vps_t]
+
+        for j in range(q):
+            if vps_id[j] in sorted_id[:v1]:
+                s[j] = 1
+            else:
+                s[j] = 0
+
+        p = (sigma + s) / v
+        plan[1] = p.tolist()
+        return plan
+
+    def mle_fit_plan(self, plan, v, th=None, bounds=None):
         th0 = th
         X, p = plan
 
