@@ -572,6 +572,24 @@ class Model(object):
         plan[1] = p.tolist()
         return plan
 
+    def grad_lik_plan(self, th, plan, Y, v):
+        U, p = plan
+        dS = 0
+        for i in range(len(U)):
+            k_i = int(p[i] * v)
+            for j in range(k_i):
+                dS += self.__dL(th, U[i], Y[i][j])
+        return dS
+
+    def lik_plan(self, th, plan, Y, v):
+        U, p = plan
+        S = 0
+        for i in range(len(U)):
+            k_i = int(p[i] * v)
+            for j in range(k_i):
+                S += self.lik(U[i], Y[i][j], th)
+        return S
+
     def mle_fit_plan(self, plan, v, th=None, bounds=None):
         th0 = th
         X, p = plan
