@@ -902,7 +902,7 @@ class Model(object):
         M = self.fim(u=u, th=th)
         return -np.trace(np.linalg.inv(M_plan) @ M)
 
-    def crit_tau(self, tau, a, plan, th):
+    def __crit_tau(self, tau, a, plan, th):
         x, p = plan
         p = list(p)
         x = np.array(x)
@@ -936,12 +936,11 @@ class Model(object):
             th = np.array(th)
 
         eta = len(th)
-        n = self.__n
         r = self.__r
         X, p = plan  # TODO: make plan class
         N = X.shape[-1]
 
-        crit_tau_grad = autograd.grad(self.crit_tau)
+        crit_tau_grad = autograd.grad(self.__crit_tau)
 
         x_bounds = [(-1, 1)] * r * N
 
@@ -970,12 +969,12 @@ class Model(object):
                 # XXX: this was needed to get non singular tau value,
                 # not sure if it is still needed
                 tau_guess = np.random.uniform(size=1)
-                tau_crit = self.crit_tau(tau_guess, x_opt,
+                tau_crit = self.__crit_tau(tau_guess, x_opt,
                                          copy.deepcopy(plan), th)
                 if not np.isnan(tau_crit):
                     break
 
-            rez = scipy.optimize.minimize(fun=self.crit_tau, x0=tau_guess,
+            rez = scipy.optimize.minimize(fun=self.__crit_tau, x0=tau_guess,
                                           args=(x_opt, copy.deepcopy(plan), th),
                                           bounds=[(0, 1)],
                                           method='SLSQP', jac=crit_tau_grad)
