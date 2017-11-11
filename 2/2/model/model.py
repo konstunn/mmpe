@@ -590,9 +590,28 @@ class Model(object):
                 S += self.lik(U[i], Y[i][j], th)
         return S
 
-    def mle_fit_plan(self, plan, v, th=None, bounds=None):
-        th0 = th
-        X, p = plan
+    def mle_fit_plan(self, plan, v, th0, bounds=None):
+        plan = self.round_plan(plan, v)
+        U, p = plan
+        q = U.shape[0]
+        Y = list()
+        for i in range(q):
+            Y.append(list())
+        for i in range(q):
+            k_i = int(p[i] * v)
+            for j in range(k_i):
+                y = self.sim(U[i])
+                Y[i].append(y)
+
+        th = self.__th
+        bounds = [(th_i-th_i*0.5, th_i+th_i*0.5) for th_i in th]
+
+        rez = scipy.optimize.minimize(fun=self.lik_plan, x0=th0,
+                                      args=(plan, Y, v),
+                                      method='SLSQP', jac=self.grad_lik_plan,
+                                      bounds=bounds)
+
+        return rez
 
     def fim(self, u, x0=None, th=None):
         """
