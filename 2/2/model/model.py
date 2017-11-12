@@ -611,6 +611,23 @@ class Model(object):
                                       method='SLSQP', jac=self.grad_lik_plan,
                                       bounds=bounds)
 
+        # calculate th rel tolerance
+        th_e = rez['x']
+        rtol_th = np.linalg.norm(th - th_e) / np.linalg.norm(th)
+        rez['rtol_th'] = rtol_th
+
+        # calc y rel tol
+        y_rtols = list()
+        for i in range(q):
+            k_i = int(p[i] * v)
+            for j in range(k_i):
+                yh_e = self.yhat(U[i], Y[i][j], th_e)
+                yh = self.yhat(U[i], Y[i][j])
+                y_rtol = np.linalg.norm(yh_e - yh) / np.linalg.norm(yh)
+                y_rtols.append(y_rtol)
+
+        avg_y_rtol = sum(y_rtols) / len(y_rtols)
+        rez['avg_y_rtol'] = avg_y_rtol
         return rez
 
     def fim(self, u, x0=None, th=None):
