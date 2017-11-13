@@ -435,140 +435,88 @@ m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th_true)
 \subsection{Пример 1}
 \[
   \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} =
-  \begin{pmatrix} \theta_1 & 0 \\ 0 & \theta_2 \end{pmatrix}
+  \begin{pmatrix} \theta_1 & 1 \\ 0 & 0.5 \end{pmatrix}
   \begin{pmatrix} x_1(t_k) \\ x_2(t_k) \end{pmatrix}
-  + \begin{pmatrix} u_1(t_k) \\ u_2(t_k) \end{pmatrix}
+  + 
+	\begin{pmatrix} \theta_2 \\ 1 \end{pmatrix}
+	u(t_k) 
   + \begin{pmatrix} w_1(t_k) \\ w_2(t_k) \end{pmatrix}
 \]
 \[
-  \begin{pmatrix} y_1(\fut) \\ y_2(\fut) \end{pmatrix} =
-  \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} +
+  y(\fut) =
+	\begin{pmatrix} 1 & 0 \end{pmatrix}
+	\begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} +
   \begin{pmatrix} v_1(\fut) \\ v_2(\fut) \end{pmatrix}
 \]
 \[
   \overline{x}(0) = \begin{pmatrix} 0 \\ 0 \end{pmatrix},\
   P(0) = \begin{pmatrix} 0.1 & 0 \\ 0 & 0.1 \end{pmatrix},\
-  Q = \begin{pmatrix} 0.05 & 0 \\ 0 & 0.05 \end{pmatrix},\
-  R = \begin{pmatrix} 0.15 & 0 \\ 0 & 0.15 \end{pmatrix}
+  Q = \begin{pmatrix} 0.1 & 0 \\ 0 & 0.1 \end{pmatrix},\
+  R = 0.1 
 \]
 
 Истинные значения параметров
 $\theta_{true} = \begin{pmatrix} 0.5 & 0.5 \end{pmatrix}$ \\
 
-\indent Управляющее воздействие --- дискретная ступенчатая функция
-\[
-  u(t_k) = \begin{pmatrix} 10 \\ 10 \end{pmatrix},\ k = 0, 1, 2, \ldots, 99
-\]
+\newpage
+\subsubsection{Оценивание параметров по произвольному начальному плану}
 
-Область оценивания: $0.1 \le \theta_i \le 0.9$, $i = 1, \ldots, s$.
-
-% simulate response, fit model, dump results
-\begin{pycode}[model1]
-N = 100
-u = np.ones([2, N])
-u = u * 10
-
-# run simulation
-rez = m.sim(u)  # TODO: return dictionary or named tuple
-y = rez[1]
-
-yhat_true = m.yhat(u=u, y=y)
-
-th_init = [0.1, 0.9]
-
-loss_true = m.lik(u=u, y=y)
-loss_init = m.lik(u=u, y=y, th=th_init)
-
-rez = m.mle_fit(th=th_init, y=y, u=u)
-
-th_e = rez['x']
-loss_e = rez['fun']
-
-yhat_e = m.yhat(u=u, y=y, th=th_e)
-
-data = {'loss_init': loss_init,
-        'loss_true': loss_true,
-        'th_e': th_e,
-        'loss_e': loss_e,
-        'th_true': th_true,
-        'yhat_true': yhat_true,
-        'yhat_e': yhat_e}
-
-with open('./data/data1.pkl', 'wb') as f:
-  pkl.dump(data, f)
-\end{pycode}
-
-% load results data and print their values below
 \begin{pycode}
-filepath = './data/data1.pkl'
-pytex.add_dependencies(filepath)
-with open(filepath, 'rb') as f:
-    data = pkl.load(f)
-
-loss_true = data['loss_true']
-loss_init = data['loss_init']
-
-loss_e = data['loss_e']
-
-th_e = data['th_e']
-th_e_m = np.matrix(th_e)
-th_e = np.around(th_e_m, 6)
-th_e = pylatex.Matrix(th_e, mtype='b')
-th_e = th_e.dumps()
-
-th_t = data['th_true']
-th_t = np.matrix(th_t)
-
-rtol = np.linalg.norm(th_t - th_e_m) / np.linalg.norm(th_t)
-rtol = "%.6f" % (rtol * 100)
-
-yhat_t = data['yhat_true']
-yhat_e = data['yhat_e']
-rtoly = np.linalg.norm(yhat_t - yhat_e) / np.linalg.norm(yhat_t)
-rtoly = "%.6f" % (rtoly * 100)
+import sys
 \end{pycode}
 
-\subsubsection{Оценивание параметров: результаты}
+Число точек в плане $q = 4$.
 
-Значение критерия при истинных значениях параметров
-\[
-L(\theta_{true}) = \pyc{print("%.3f" % loss_true)}.
-\]
+Длина точки плана $N = 20$.
 
-Начальное приближение по параметрам
-\[ % TODO: make reproducible
-\theta_{init} = \begin{bmatrix} 0.1 & 0.9 \end{bmatrix}.
-\]
+Область планирования: $u(t_k) \in [ -1,\ 1 ],\ k = 0, 1, \ldots, N$.
 
-Значение критерия при начальном приближении
-\[
-L(\theta_{init}) = \pyc{print("%.3f" % loss_init)}.
-\]
+Область оценивания: $ 0.25 \le \theta_i \le 0.75,\ i = 1, 2 $.
 
-Полученные оценки параметров
-\[
-\hat{\theta} = \pyc{print(th_e)}
-\]
+Общее число запусков $\nu = 10$. \\
 
-Значение критерия 
-\[
-L(\hat{\theta}) = \pyc{print("%.3f" % loss_e)}
-\]
+Полученные оценки параметров:
+$\hat{\theta} = \begin{bmatrix} 0.342 & 0.559 \end{bmatrix}$.
 
-\newcommand{\rtol}[1]{\frac{||#1_{true} - \hat{#1}||}{||#1_{true}||}}
+\newcommand{\rtol}[2]{\frac{||\hat{#1}#2 -
+{\hat{#1}#2_{true}}||}{||\hat{#1}#2_{true}||}}
 
 Относительная погрешность в пространстве параметров:
 \[
-\rtol{\theta} = \pyc{print(rtol)} \%
+	\delta_{\theta} = \rtol{\theta}{} = 23.9\%.
 \]
 
-Относительная погрешность в пространстве откликов:
+Средняя относительная погрешность в пространстве откликов:
 \[
-\rtol{y} = \pyc{print(rtoly)} \%
+	\overline{\delta}_Y = \frac{1}{\nu}
+		\sum\limits_{i=1}^{q}\sum\limits_{j=1}^{k_i} \rtol{Y}{^{i,j}} = 11.8 \%.
 \]
 
-\section{Заключение}
+\subsubsection{Синтез оптимального плана и оценивание параметров по плану}
 
+По проведению двойственной процедуры планирования входных сигналов был получен
+некоторый оптимальный план. В результате проведения идентификационных экспериментов по
+данному плану были получены оценки параметров.
+
+Полученные оценки параметров:
+$\hat{\theta} = \begin{bmatrix} 0.46 & 0.47 \end{bmatrix}$.
+
+Относительная погрешность в пространстве параметров:
+\[
+	\delta_{\theta} = \rtol{\theta}{} = 6.7\%.
+\]
+
+Средняя относительная погрешность в пространстве откликов:
+\[
+	\overline{\delta}_Y = \frac{1}{\nu}
+		\sum\limits_{i=1}^{q}\sum\limits_{j=1}^{k_i} \rtol{Y}{^{i,j}} = 2.6 \%.
+\]
+
+\section{Выводы}
+
+По результатам эксперимента видно уменьшение погрешности оценок при оценивании
+по оптимальному плану. Таким образом подтверждается эффективность процедуры
+активной параметрической идентификации.
 
 \begin{thebibliography}{9}
 
