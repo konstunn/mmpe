@@ -171,7 +171,9 @@ $\xi_{\nu}$ представляет собой совокупность точ�
 			\alpha_1, \alpha_2, \ldots, \alpha_q \\
 			p_1, p_2, \ldots, p_q	
 		\end{array} \right\},\ 
-	p_i \ge 0,\ \sum\limits_{i=1}^q p_i = 1,\ \alpha_i \in \Omega_{\alpha},\ i = 1, 2, \ldots, q.
+	p_i \ge 0,\ 
+	\sum\limits_{i=1}^q p_i = 1,\ \alpha_i \in \Omega_{\alpha},\ 
+	i = 1, 2, \ldots, q.
 \end{equation*}
 
 В отличие от дискретного нормированного плана в непрерывном нормированном плане
@@ -242,16 +244,16 @@ $\xi_{\nu}$ представляет собой совокупность точ�
 \subsubsection{Алгоритм процедуры активной параметрической идентификации:}
 
 \begin{enumerate}
-	\item взять произвольный (можно случайный) план $\xi_0$,
+	\item Взять произвольный (можно случайный) план $\xi_0$,
 		тогда в результате проведения идентификационных экспериментов по данному
-		плану будет сформировано множество $\Xi_0$,
-	\item получить начальные оценки $\hat{\theta}_0$ параметров модели
+		плану будет сформировано множество $\Xi_0$;
+	\item Получить начальные оценки $\hat{\theta}_0$ параметров модели
 		по плану $\xi_0$, решая задачу:
 \[
 	\hat{\theta}_0 = \arg\min\limits_{\theta \in \Omega_{\theta}}
-		\chi(\Xi_0, \theta),
+		\chi(\Xi_0, \theta);
 \]
-	\item провести процедуру (прямую или двойственную) оптимального планирования
+	\item Провести процедуру (прямую или двойственную) оптимального планирования
 		входных сигналов --- получить план $\xi^{*}$, решая следующую задачу,
 		используя найденные найденные ранее оценки $\hat{\theta}_0$:
 \[
@@ -259,11 +261,11 @@ $\xi_{\nu}$ представляет собой совокупность точ�
 \]
 	Множество, сформированное в результате проведения идентификационных
 		экспериментов по плану $\xi^{*}$ обозначим как $\Xi^{*}$.
-	\item получить конечные оценки $\hat{\theta}$ параметров модели по ранее
+	\item Получить конечные оценки $\hat{\theta}$ параметров модели по ранее
 		синтезированному оптимальному плану $\xi^{*}$:
 \[
 	\hat{\theta} = \arg\min\limits_{\theta \in \Omega_{\theta}} \chi(\Xi^{*},
-		\theta),
+		\theta);
 \]
 и закончить процесс.
 
@@ -336,8 +338,10 @@ P(0)$ и в вектор $\overline{\vec{x}}(0)$ в различных комб�
 правдоподобия. Для одноточечного плана эксперимента она имеет вид \cite{mono}:
 \begin{equation*}
 \begin{split}
-	\chi(\theta, U_i, Y_{i,j}) = -\ln{L(\theta)} = \frac{Nm}{2}\ ln{2\pi} + \frac{1}{2}
-  \sum\limits_{k=0}^{N-1} \left[ \eps^T(t_{k+1}) B^{-1}(t_{k+1}) \eps(t_{k+1}) \right]
+	\chi(\theta, U_i, Y_{i,j}) = -\ln{L(\theta)} =
+	\frac{Nm}{2}\ ln{2\pi} + \frac{1}{2}
+	\sum\limits_{k=0}^{N-1} \left[ [\eps^{i,j}(t_{k+1})]^T 
+	B^{-1}(t_{k+1}) \eps^{i,j}(t_{k+1}) \right]
   + \\ + \frac{1}{2} \sum\limits_{k=0}^{N-1} \ln \det B^{-1}(t_{k+1}).
 \end{split}
 \end{equation*}
@@ -354,15 +358,15 @@ P(0)$ и в вектор $\overline{\vec{x}}(0)$ в различных комб�
 Выражение для градиента критерия для одноточечного плана имеет вид \cite{mono}:
 \begin{equation*}
 \begin{split}
-  \frac{\partial \chi(\theta)}{\partial \theta_i} = \sum\limits_{k=0}^{N-1}
-  \left[ \frac{\partial \eps(t_{k+1})}{\partial \theta_i} \right]^T
+  \frac{\partial \chi(\theta)}{\partial \theta_l} = \sum\limits_{k=0}^{N-1}
+  \left[ \frac{\partial \eps(t_{k+1})}{\partial \theta_l} \right]^T
   B^{-1}(t_{k+1}) \left[ \eps(t_{k+1}) \right] - \\
   - \frac{1}{2}
   \sum\limits_{k=0}^{N-1} \left[ \eps(t_{k+1}) \right]^T B^{-1}(t_{k+1})
   \frac{\partial B(t_{k+1})}{\partial \theta_i} B^{-1}(t_{k+1}) \eps(t_{k+1}) +
   \\ + 
   \frac{1}{2} \sum\limits_{k=0}^{N-1} \Sp \left[ B^{-1}(t_{k+1})
-  \frac{\partial B(t_{k+1})}{\partial \theta_i} \right]. 
+  \frac{\partial B(t_{k+1})}{\partial \theta_l} \right],\ l = 1, 2, \ldots, s.
 \end{split}
 \end{equation*}
 
@@ -375,64 +379,12 @@ import numpy as np
 import dill as pkl
 from model.model import Model
 import pylatex
-
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
-
-def surf_plot_save(X, Y, Z, filepath):
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
-
-    surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
-                           linewidth=0, antialiased=False)
-
-    ax.set_xlabel(r'$\theta_1$')
-    ax.set_ylabel(r'$\theta_2$')
-    ax.set_zlabel(r'$L(\theta_1, \theta_2)$')
-
-    ax.zaxis.get_major_formatter().set_powerlimits((0, 1))
-
-    plt.savefig(filepath, bbox_inches='tight')
 \end{pythontexcustomcode}
 
-\section{Примеры решений}
-
-% define, create model 1
-\begin{pycode}[model1]
-F = lambda th: [[th[0], 0.],
-                [0., th[1]]]
-
-C = lambda th: [[1.0, 0.],
-                [0., 1.0]]
-
-G = lambda th: [[1.0, 0.],
-                [0., 1.0]]
-
-H = lambda th: [[1.0, 0.],
-                [0., 1.0]]
-
-x0_m = lambda th: [[0.],
-                   [0.]]
-
-x0_c = lambda th: [[0.1, 0.],
-                   [0., 0.1]]
-
-w_c = lambda th: [[0.05, 0.],
-                  [0., 0.05]]
-
-v_c = lambda th: [[0.15, 0.],
-                  [0., 0.15]]
-
-th_true = [0.5, 0.5]
-
-# TODO: check if there are extra components in 'th'
-m = Model(F, C, G, H, x0_m, x0_c, w_c, v_c, th_true)
-\end{pycode}
+\section{Пример активной идентификации}
 
 % TODO: introduce counter
 % TODO: print numpy arrays instead of matrices
-\subsection{Пример 1}
 \[
   \begin{pmatrix} x_1(\fut) \\ x_2(\fut) \end{pmatrix} =
   \begin{pmatrix} \theta_1 & 1 \\ 0 & 0.5 \end{pmatrix}
@@ -461,11 +413,41 @@ $\theta_{true} = \begin{pmatrix} 0.5 & 0.5 \end{pmatrix}$ \\
 \newpage
 \subsubsection{Оценивание параметров по произвольному начальному плану}
 
-\begin{pycode}
-import sys
-\end{pycode}
+Спектр непрерывного начального плана:
 
-Число точек в плане $q = 4$.
+\begin{pycode}[][fontsize=\small]
+filename = './data/plan0.pkl'
+with open(filename, 'rb') as f:
+    plan0 = pkl.load(f)
+
+def print_plan_tex(plan0):
+	print('$')
+	print('U = \\left\{')
+
+	for i in range(plan0[0].shape[0]-1):
+		x = plan0[0][i]
+		xx = pylatex.Matrix(np.round(x.T, 2), mtype='b').dumps()
+		print(xx)
+		print(',\ ')
+
+	xx = pylatex.Matrix(np.round(plan0[0][-1].T), mtype='b').dumps()
+	print(xx)
+			
+	print('\\right\}')
+	print('$')
+
+print_plan_tex(plan0)
+\end{pycode}
+\newline
+
+Веса непрерывного начального плана:
+\begin{pycode}
+p = np.array(plan0[1], ndmin=2)
+p = pylatex.Matrix(p, mtype='b').dumps()
+print('$ p = ')
+print(p)
+print('$')
+\end{pycode}
 
 Длина точки плана $N = 20$.
 
@@ -474,6 +456,50 @@ import sys
 Область оценивания: $ 0.25 \le \theta_i \le 0.75,\ i = 1, 2 $.
 
 Общее число запусков $\nu = 10$. \\
+
+Веса соответствующего дискретного начального плана:
+
+\begin{pycode}
+def round_w(p, v):
+	import operator
+	p = np.array(p)
+	q = len(p)
+	sigmaI = np.ceil((v - q) * p)  # 1
+	sigmaII = np.floor(v * p)
+	vI = v - np.sum(sigmaI)  # 2
+	vII = v - np.sum(sigmaII)
+	if vI < vII:
+			sigma = sigmaI
+			v1 = int(vI)
+	else:
+			sigma = sigmaII
+			v1 = int(vII)
+
+	s = np.zeros(q)
+
+	vps = v * p - sigma
+	vps_id = [i for i in range(len(vps))]
+	vps_t = [(val, key) for val, key in zip(vps, vps_id)]
+
+	vps_t = sorted(vps_t, key=operator.itemgetter(0))
+	sorted_id = [elem[1] for elem in vps_t]
+
+	for j in range(q):
+			if vps_id[j] in sorted_id[:v1]:
+					s[j] = 1
+			else:
+					s[j] = 0
+
+	p = (sigma + s) / v
+	return p
+
+p = round_w(plan0[1], 10)
+p = np.array(p, ndmin=2)
+p = pylatex.Matrix(p, mtype='b').dumps()
+print('$ p = ')
+print(p)
+print('$')
+\end{pycode}
 
 Полученные оценки параметров:
 $\hat{\theta} = \begin{bmatrix} 0.342 & 0.559 \end{bmatrix}$.
@@ -497,6 +523,16 @@ $\hat{\theta} = \begin{bmatrix} 0.342 & 0.559 \end{bmatrix}$.
 По проведению двойственной процедуры планирования входных сигналов был получен
 некоторый оптимальный план. В результате проведения идентификационных экспериментов по
 данному плану были получены оценки параметров.
+
+Оптимальный план:
+
+\begin{pycode}
+filename = './data/plan1.pkl'
+with open(filename, 'rb') as f:
+    plan1 = pkl.load(f)
+
+print(plan1)
+\end{pycode}
 
 Полученные оценки параметров:
 $\hat{\theta} = \begin{bmatrix} 0.46 & 0.47 \end{bmatrix}$.
@@ -532,482 +568,6 @@ $\hat{\theta} = \begin{bmatrix} 0.46 & 0.47 \end{bmatrix}$.
 \end{thebibliography}
 
 \renewcommand{\baselinestretch}{1}
-
-\begin{appendices}
-
-\section{Исходные тексты программ}
-
-% TODO: make pycode, within it print pyverbatim, read source file and print it
-\begin{pyverbatim}[][fontsize=\small]
-
-import math
-import tensorflow as tf
-import control
-import numpy as np
-from tensorflow.contrib.distributions import MultivariateNormalFullCovariance
-import scipy
-
-
-class Model(object):
-
-    # TODO: introduce some more default argument values, check types, cast if
-    # neccessary
-    def __init__(self, F, C, G, H, x0_mean, x0_cov, w_cov, v_cov, th):
-        """
-        Arguments are all callables (functions) of 'th' returning python lists
-        except for 'th' itself (of course)
-        """
-
-        # TODO: evaluate and cast everything to numpy matrices first
-        # TODO: cast floats, ints to numpy matrices
-        # TODO: allow both constant matrices and callables
-
-        # store arguments, after that check them
-        self.__F = F
-        self.__C = C
-        self.__G = G
-        self.__H = H
-        self.__x0_mean = x0_mean
-        self.__x0_cov = x0_cov
-        self.__w_cov = w_cov
-        self.__v_cov = v_cov
-        self.__th = th
-
-        # evaluate all functions
-        th = np.array(th)
-        F = np.array(F(th))
-        C = np.array(C(th))
-        H = np.array(H(th))
-        G = np.array(G(th))
-        w_cov = np.array(w_cov(th))    # Q
-        v_cov = np.array(v_cov(th))    # R
-        x0_m = np.array(x0_mean(th))
-        x0_cov = np.array(x0_cov(th))  # P_0
-
-        # get dimensions and store them as well
-        self.__n = n = F.shape[0]
-        self.__m = m = H.shape[0]
-        self.__p = p = G.shape[1]
-        self.__r = r = C.shape[1]
-
-        # generate means
-        w_mean = np.zeros([p, 1], np.float64)
-        v_mean = np.zeros([m, 1], np.float64)
-
-        # and store them
-        self.__w_mean = w_mean
-        self.__v_mean = v_mean
-
-        # check conformability
-        u = np.ones([r, 1])
-        # generate random vectors
-        # squeeze, because mean must be one dimensional
-        x = np.random.multivariate_normal(x0_m.squeeze(), x0_cov)
-        w = np.random.multivariate_normal(w_mean.squeeze(), w_cov)
-        v = np.random.multivariate_normal(v_mean.squeeze(), v_cov)
-
-        # shape them as column-vectors
-        x = x.reshape([n, 1])
-        w = w.reshape([p, 1])
-        v = v.reshape([m, 1])
-
-        # if model is not conformable, exception would be raised (thrown) here
-        F * x + C * u + G * w
-        H * x + v
-
-        # check controllability, stability, observability
-        self.__validate()
-
-        # if the execution reached here, all is fine so
-        # define corresponding computational tensorflow graphs
-        self.__define_observations_simulation()
-        self.__define_likelihood_computation()
-
-    def __define_observations_simulation(self):
-        # TODO: reduce code not to create extra operations
-
-        self.__sim_graph = tf.Graph()
-        sim_graph = self.__sim_graph
-
-        r = self.__r
-        m = self.__m
-        n = self.__n
-        p = self.__p
-
-        x0_mean = self.__x0_mean
-        x0_cov = self.__x0_cov
-
-        with sim_graph.as_default():
-
-            th = tf.placeholder(tf.float64, shape=[None], name='th')
-
-            # TODO: this should be continuous function of time
-            # but try to let pass array also
-            u = tf.placeholder(tf.float64, shape=[r, None], name='u')
-
-            t = tf.placeholder(tf.float64, shape=[None], name='t')
-
-            # TODO: refactor
-
-            # FIXME: gradient of py_func is None
-            # TODO: embed function itself in the graph, must rebuild the graph
-            # if the structure of the model change
-            # use tf.convert_to_tensor
-            F = tf.convert_to_tensor(self.__F(th), tf.float64)
-            F.set_shape([n, n])
-
-            C = tf.convert_to_tensor(self.__C(th), tf.float64)
-            C.set_shape([n, r])
-
-            G = tf.convert_to_tensor(self.__G(th), tf.float64)
-            G.set_shape([n, p])
-
-            H = tf.convert_to_tensor(self.__H(th), tf.float64)
-            H.set_shape([m, n])
-
-            x0_mean = tf.convert_to_tensor(x0_mean(th), tf.float64)
-            x0_mean = tf.squeeze(x0_mean)
-
-            x0_cov = tf.convert_to_tensor(x0_cov(th), tf.float64)
-            x0_cov.set_shape([n, n])
-
-            x0_dist = MultivariateNormalFullCovariance(x0_mean, x0_cov,
-                                                       name='x0_dist')
-
-            Q = tf.convert_to_tensor(self.__w_cov(th), tf.float64)
-            Q.set_shape([p, p])
-
-            w_mean = self.__w_mean.squeeze()
-            w_dist = MultivariateNormalFullCovariance(w_mean, Q, name='w_dist')
-
-            R = tf.convert_to_tensor(self.__v_cov(th), tf.float64)
-            R.set_shape([m, m])
-            v_mean = self.__v_mean.squeeze()
-            v_dist = MultivariateNormalFullCovariance(v_mean, R, name='v_dist')
-
-            def sim_obs(x):
-                v = v_dist.sample()
-                v = tf.reshape(v, [m, 1])
-                y = H @ x + v  # the syntax is valid for Python >= 3.5
-                return y
-
-            def sim_loop_cond(x, y, t, k):
-                N = tf.stack([tf.shape(t)[0]])
-                N = tf.reshape(N, ())
-                return tf.less(k, N-1)
-
-            def sim_loop_body(x, y, t, k):
-
-                # TODO: this should be function of time
-                u_t_k = tf.slice(u, [0, k], [r, 1])
-
-                def state_propagate(x):
-                    w = w_dist.sample()
-                    w = tf.reshape(w, [p, 1])
-                    Fx = tf.matmul(F, x, name='Fx')
-                    Cu = tf.matmul(C, u_t_k, name='Cu')
-                    Gw = tf.matmul(G, w, name='Gw')
-                    x = Fx + Cu + Gw
-                    return x
-
-                tk = tf.slice(t, [k], [2], 'tk')
-
-                x_k = x[:, -1]
-                x_k = tf.reshape(x_k, [n, 1])
-
-                x_k = state_propagate(x_k)
-
-                y_k = sim_obs(x_k)
-
-                # TODO: stack instead of concat
-                x = tf.concat([x, x_k], 1)
-                y = tf.concat([y, y_k], 1)
-
-                k = k + 1
-
-                return x, y, t, k
-
-            x = x0_dist.sample(name='x0_sample')
-            x = tf.reshape(x, [n, 1], name='x')
-
-            # this zeroth measurement should be thrown away
-            y = sim_obs(x)
-            k = tf.constant(0, name='k')
-
-            shape_invariants = [tf.TensorShape([n, None]),
-                                tf.TensorShape([m, None]),
-                                t.get_shape(),
-                                k.get_shape()]
-
-            sim_loop = tf.while_loop(sim_loop_cond, sim_loop_body,
-                                     [x, y, t, k], shape_invariants,
-                                     name='sim_loop')
-
-            self.__sim_loop_op = sim_loop
-
-    # defines graph
-    def __define_likelihood_computation(self):
-
-        self.__lik_graph = tf.Graph()
-        lik_graph = self.__lik_graph
-
-        r = self.__r
-        m = self.__m
-        n = self.__n
-        p = self.__p
-
-        x0_mean = self.__x0_mean
-        x0_cov = self.__x0_cov
-
-        with lik_graph.as_default():
-            # FIXME: Don't Repeat Yourself (in simulation and here)
-            th = tf.placeholder(tf.float64, shape=[None], name='th')
-            u = tf.placeholder(tf.float64, shape=[r, None], name='u')
-            t = tf.placeholder(tf.float64, shape=[None], name='t')
-            y = tf.placeholder(tf.float64, shape=[m, None], name='y')
-
-            N = tf.stack([tf.shape(t)[0]])
-            N = tf.reshape(N, ())
-
-            F = tf.convert_to_tensor(self.__F(th), tf.float64)
-            F.set_shape([n, n])
-
-            C = tf.convert_to_tensor(self.__C(th), tf.float64)
-            C.set_shape([n, r])
-
-            G = tf.convert_to_tensor(self.__G(th), tf.float64)
-            G.set_shape([n, p])
-
-            H = tf.convert_to_tensor(self.__H(th), tf.float64)
-            H.set_shape([m, n])
-
-            x0_mean = tf.convert_to_tensor(x0_mean(th), tf.float64)
-            x0_mean.set_shape([n, 1])
-
-            P_0 = tf.convert_to_tensor(x0_cov(th), tf.float64)
-            P_0.set_shape([n, n])
-
-            Q = tf.convert_to_tensor(self.__w_cov(th), tf.float64)
-            Q.set_shape([p, p])
-
-            R = tf.convert_to_tensor(self.__v_cov(th), tf.float64)
-            R.set_shape([m, m])
-
-            I = tf.eye(n, n, dtype=tf.float64)
-
-            def lik_loop_cond(k, P, S, t, u, x, y):
-                return tf.less(k, N-1)
-
-            def lik_loop_body(k, P, S, t, u, x, y):
-
-                # TODO: this should be function of time
-                u_t_k = tf.slice(u, [0, k], [r, 1])
-
-                # k+1, cause zeroth measurement should not be taken into account
-                y_k = tf.slice(y, [0, k+1], [m, 1])
-
-                t_k = tf.slice(t, [k], [2], 't_k')
-
-                # TODO: extract Kalman filter to a separate class
-                def state_predict(x):
-                    Fx = tf.matmul(F, x, name='Fx')
-                    Cu = tf.matmul(C, u_t_k, name='Cu')
-                    x = Fx + Cu
-                    return x
-
-                def covariance_predict(P):
-                    GQtG = tf.matmul(G @ Q, G, transpose_b=True)
-                    PtF = tf.matmul(P, F, transpose_b=True)
-                    P = tf.matmul(F, P) + PtF + GQtG
-                    return P
-
-                x = state_predict(x)
-
-                P = covariance_predict(P)
-
-                E = y_k - tf.matmul(H, x)
-
-                B = tf.matmul(H @ P, H, transpose_b=True) + R
-                invB = tf.matrix_inverse(B)
-
-                K = tf.matmul(P, H, transpose_b=True) @ invB
-
-                S_k = tf.matmul(E, invB @ E, transpose_a=True)
-                S_k = 0.5 * (S_k + tf.log(tf.matrix_determinant(B)))
-
-                S = S + S_k
-
-                # state update
-                x = x + tf.matmul(K, E)
-
-                # covariance update
-                P = (I - K @ H) @ P
-
-                k = k + 1
-
-                return k, P, S, t, u, x, y
-
-            k = tf.constant(0, name='k')
-            P = P_0
-            S = tf.constant(0.0, dtype=tf.float64, shape=[1, 1], name='S')
-            x = x0_mean
-
-            # TODO: make a named tuple of named list
-            lik_loop = tf.while_loop(lik_loop_cond, lik_loop_body,
-                                     [k, P, S, t, u, x, y], name='lik_loop')
-
-            dS = tf.gradients(lik_loop[2], th)
-
-            self.__lik_loop_op = lik_loop
-            self.__dS = dS
-
-    def __isObservable(self, th=None):
-        if th is None:
-            th = self.__th
-        F = np.array(self.__F(th))
-        C = np.array(self.__C(th))
-        n = self.__n
-        obsv_matrix = control.obsv(F, C)
-        rank = np.linalg.matrix_rank(obsv_matrix)
-        return rank == n
-
-    def __isControllable(self, th=None):
-        if th is None:
-            th = self.__th
-        F = np.array(self.__F(th))
-        C = np.array(self.__C(th))
-        n = self.__n
-        ctrb_matrix = control.ctrb(F, C)
-        rank = np.linalg.matrix_rank(ctrb_matrix)
-        return rank == n
-
-    # FIXME: fix to discrete
-    def __isStable(self, th=None):
-        if th is None:
-            th = self.__th
-        F = np.array(self.__F(th))
-        eigv = np.linalg.eigvals(F)
-        real_parts = np.real(eigv)
-        return np.all(real_parts < 0)
-
-    def __validate(self, th=None):
-        # FIXME: do not raise exceptions
-        # TODO: prove, print matrices and their criteria
-        if not self.__isControllable(th):
-            # raise Exception('''Model is not controllable. Set different
-            #                structure or parameters values''')
-            pass
-
-        if not self.__isStable(th):
-            # raise Exception('''Model is not stable. Set different structure or
-            #                parameters values''')
-            pass
-
-        if not self.__isObservable(th):
-            # raise Exception('''Model is not observable. Set different
-            #                structure or parameters values''')
-            pass
-
-    def sim(self, u, th=None):
-        if th is None:
-            th = self.__th
-
-        k = u.shape[1]
-        t = np.linspace(0, k-1, k)
-
-        self.__validate(th)
-        g = self.__sim_graph
-
-        if t.shape[0] != u.shape[1]:
-            raise Exception('''t.shape[0] != u.shape[1]''')
-
-        # run simulation graph
-        with tf.Session(graph=g) as sess:
-            t_ph = g.get_tensor_by_name('t:0')
-            th_ph = g.get_tensor_by_name('th:0')
-            u_ph = g.get_tensor_by_name('u:0')
-            rez = sess.run(self.__sim_loop_op, {th_ph: th, t_ph: t, u_ph: u})
-
-        return rez
-
-    def lik(self, u, y, th=None):
-
-        # hack continuous to discrete system
-        k = u.shape[1]
-        t = np.linspace(0, k-1, k)
-
-        if th is None:
-            th = self.__th
-
-        # to numpy 1D array
-        th = np.array(th).squeeze()
-
-        # self.__validate(th)
-        g = self.__lik_graph
-
-        # TODO: check for y also
-        if t.shape[0] != u.shape[1]:
-            raise Exception('''t.shape[0] != u.shape[1]''')
-
-        # run lik graph
-        with tf.Session(graph=g) as sess:
-            t_ph = g.get_tensor_by_name('t:0')
-            th_ph = g.get_tensor_by_name('th:0')
-            u_ph = g.get_tensor_by_name('u:0')
-            y_ph = g.get_tensor_by_name('y:0')
-            rez = sess.run(self.__lik_loop_op, {th_ph: th, t_ph: t, u_ph: u,
-                                                y_ph: y})
-
-        # FIXME: fix to discrete
-        N = len(t)
-        m = y.shape[0]
-        S = rez[2]
-        S = S + N*m * 0.5 + np.log(2*math.pi)
-
-        return S
-
-    def __L(self, th, u, y):
-        return self.lik(u, y, th)
-
-    def __dL(self, th, u, y):
-        return self.dL(u, y, th)
-
-    def dL(self, u, y, th=None):
-        if th is None:
-            th = self.__th
-
-        # hack continuous to discrete system
-        k = u.shape[1]
-        t = np.linspace(0, k-1, k)
-
-        # to 1D numpy array
-        th = np.array(th).squeeze()
-
-        # self.__validate(th)
-        g = self.__lik_graph
-
-        if t.shape[0] != u.shape[1]:
-            raise Exception('''t.shape[0] != u.shape[1]''')
-
-        # run lik graph
-        with tf.Session(graph=g) as sess:
-            t_ph = g.get_tensor_by_name('t:0')
-            th_ph = g.get_tensor_by_name('th:0')
-            u_ph = g.get_tensor_by_name('u:0')
-            y_ph = g.get_tensor_by_name('y:0')
-            rez = sess.run(self.__dS, {th_ph: th, t_ph: t, u_ph: u, y_ph: y})
-
-        return rez[0]
-
-    def mle_fit(self, th, u, y):
-        # TODO: call slsqp
-        th0 = th
-        th = scipy.optimize.minimize(self.__L, th0, args=(u, y),
-                                     jac=self.__dL, options={'disp': True})
-        return th
-\end{pyverbatim}
-
-\end{appendices}
 
 \end{document}
 
