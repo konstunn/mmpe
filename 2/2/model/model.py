@@ -14,6 +14,23 @@ import operator
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
+class Plan(object):
+    def __init__(self, q, r, N):
+        pass
+
+    def clean(self):
+        pass
+
+    def add(self, x, p):
+        pass
+
+    def rand(self):
+        pass
+
+    def round(self, v):
+        pass
+
+
 class Model(object):
     # TODO: introduce some more default argument values, check types, cast if
     # neccessary
@@ -376,7 +393,6 @@ class Model(object):
         rank = np.linalg.matrix_rank(ctrb_matrix)
         return rank == n
 
-    # FIXME: fix to discrete
     def __isStable(self, th=None):
         if th is None:
             th = self.__th
@@ -530,8 +546,10 @@ class Model(object):
     def mle_fit(self, th, u, y, bounds=None):
         # TODO: call slsqp, check u.shape
         th0 = th
+        u = np.array(u, ndmin=2)
         rez = scipy.optimize.minimize(self.__L, th0, args=(u, y),
-                                      bounds=bounds, jac=self.__dL)
+                                      bounds=bounds, method='SLSQP',
+                                      jac=self.__dL)
         return rez
 
 
@@ -844,7 +862,6 @@ class Model(object):
     # TODO: take bounds
     def direct(self, plan0, th=None):
         ''' plan0: list of: list (or 3D np.array) of 'u' and list of 'p' '''
-        n = self.__n
         r = self.__r
 
         x, p = plan0
@@ -875,11 +892,10 @@ class Model(object):
 
         pn = new_plan[-q:]
         xn = new_plan[:-q].reshape([q, r, N])
-        new_plan = [xn, pn]
 
         # TODO: return loss and its jacobian values
         # return dictionary
-        return new_plan, rez['fun']
+        return [xn, pn]
 
     def clean(self, plan, dn=0.5, dp=0.1):
         ''' plan = [x, p], x is 3D array, p is list or 1D np array '''
@@ -896,6 +912,7 @@ class Model(object):
             x = np.delete(x, i, 0)
             p_i = p.pop(i)
             p = [p_j + p_i / len(p) for p_j in p]
+            p = [p_i / sum(p) for p_i in p]  # make sure sum(p) = 1
 
         q, r, N = x.shape
         x = x.reshape([q, -1])
@@ -906,8 +923,8 @@ class Model(object):
             bt = tree.query_ball_tree(tree, dn)
             lengths = [len(bt_i) for bt_i in bt]
             max_length = max(lengths)
-            if max_length == 1:  # nothing to clean
-                break
+            if max_length == 1:
+                break  # nothing to clean
             else:  # clean
                 i = lengths.index(max_length)
                 indices = bt[i]  # get close points indices
@@ -931,7 +948,7 @@ class Model(object):
         q = len(p)
         x = x.reshape([q, r, N])
 
-        return x, p
+        return [x, p]
 
     # wraps fim()
     def __mu(self, u, M_plan, th):
@@ -950,15 +967,14 @@ class Model(object):
         crit = self.d_opt_crit(plan, th)
         return crit
 
-    def rand_plan(self, N, bounds=None):
+    def rand_plan(self, N, q=None, bounds=None):
         r = self.__r
         s = len(self.__th)
-        q = int((s + 1) * s / 2 + 1)
+        if q is None:
+            q = int((s + 1) * s / 2 + 1)
         x = np.random.uniform(-1, 1, [q, r, N])
         p = [1 / q] * q
-        plan = [x, p]
-        crit = self.d_opt_crit(plan)
-        return x, p, crit
+        return [x, p]
 
     def dual(self, plan, th=None, d=0.05):
         ''' plan '''
@@ -996,7 +1012,7 @@ class Model(object):
                 mu = -rez['fun']
 
                 if abs(mu - eta) <= d:
-                    return plan, self.d_opt_crit(plan)
+                    return list(plan)
 
                 if mu > eta:
                     break
@@ -1020,7 +1036,7 @@ class Model(object):
             # add x_opt, tau_opt to plan
             X, p = plan
             x_opt = np.expand_dims(x_opt, 0)
-            X = np.concatenate([X, x_opt]) # FIXME
+            X = np.concatenate([X, x_opt])
             tau_opt = tau_opt[0]
             p = [p_i - tau_opt / len(p) for p_i in p]
             p.append(tau_opt)
