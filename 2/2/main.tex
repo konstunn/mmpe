@@ -458,7 +458,6 @@ print('$')
 Общее число запусков $\nu = 10$. \\
 
 Веса соответствующего дискретного начального плана:
-
 \begin{pycode}
 def round_w(p, v):
 	import operator
@@ -524,15 +523,19 @@ $\hat{\theta} = \begin{bmatrix} 0.342 & 0.559 \end{bmatrix}$.
 некоторый оптимальный план. В результате проведения идентификационных экспериментов по
 данному плану были получены оценки параметров.
 
-Оптимальный план:
+\newpage
+Спектр оптимального плана:
 
 \begin{pycode}
 filename = './data/plan1.pkl'
 with open(filename, 'rb') as f:
     plan1 = pkl.load(f)
 
-print(plan1)
+print_plan_tex(plan1)
 \end{pycode}
+
+То есть в плане одна точка, соответственно, все запуски $\nu$ будут приходиться
+на неё.
 
 Полученные оценки параметров:
 $\hat{\theta} = \begin{bmatrix} 0.46 & 0.47 \end{bmatrix}$.
