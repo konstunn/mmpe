@@ -287,7 +287,7 @@ A
 
 \subsection{Округление непрерывного плана до дискретного}
 
-<<round-plan>>=
+<<round-plan, purl=T>>=
 roundP <- function(p, v)
 {
 	q <- length(p)
