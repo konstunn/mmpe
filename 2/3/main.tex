@@ -239,6 +239,8 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 	P_0,\ \pd{P_0}{\theta_i},\ i=1,2,\ldots,s.
 \end{align*}
 
+\newpage
+
 \item Вычислим начальные условия для уравнений чувствительности по следующей
 	формуле:
 \begin{itemize}
@@ -285,23 +287,30 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 	\end{multline}
 \end{itemize}
 
+\newpage
+
+% FIXME
 \item Решим уравнения чувствительности для ковариационной матрицы оценки
 	вектора состояний
-\begin{multline*}
+\begin{gather*}
 	\frac{d}{dt}	
 	\begin{bmatrix}
-		\hat{x}(t|t_{j-1}) \\
-		\pd{\hat{x}(t|t_{j-1})}{\theta_1} \\
+		P(t|t_{j-1}) \\
+		\pd{P(t|t_{j-1})}{\theta_1} \\
 		\vdots \\
-		\pd{\hat{x}(t|t_{j-1})}{\theta_s} \\
-	\end{bmatrix} =
+		\pd{P(t|t_{j-1})}{\theta_s} \\
+	\end{bmatrix} = \\
 	\begin{bmatrix}
-		F \hat{x}(t|t_{j-1}) + C u(t) \\
-		\pd{F}{\theta_1} \hat{x}(t|t_{j-1}) + F \pd{\hat{x}(t|t_{j-1})}{\theta_1} +
-			\pd{C}{\theta_1} u(t) \\
+		F P(t|t_{j-1}) + P(t|t_{j-1}) F^T + GQG^T \\
+		\pd{F}{\theta_1} P(t|t_{j-1}) + F \pd{P(t|t_{j-1})}{\theta_1} +
+			\pd{P(t|t_{j-1})}{\theta_1} F^T + P(t|t_{j-1}) \pd{F^T}{\theta_1} + \\
+			+ \pd{G}{\theta_1} Q G^T + G \pd{Q}{\theta_1} G^T +
+			G Q \pd{G^T}{\theta_1} \\
 		\vdots \\
-		\pd{F}{\theta_s} \hat{x}(t|t_{j-1}) + F \pd{\hat{x}(t|t_{j-1})}{\theta_s} +
-			\pd{C}{\theta_s} u(t) 
+		\pd{F}{\theta_s} P(t|t_{j-1}) + F \pd{P(t|t_{j-1})}{\theta_s} +
+			\pd{P(t|t_{j-1})}{\theta_s} F^T + P(t|t_{j-1}) \pd{F^T}{\theta_s} + \\
+			+ \pd{G}{\theta_s} Q G^T + G \pd{Q}{\theta_s} G^T +
+			G Q \pd{G^T}{\theta_s}  
 	\end{bmatrix} = \\ =
 	\begin{bmatrix}
 		F & 0 & \cdots & 0 \\
@@ -310,19 +319,43 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 		\pd{F}{\theta_s} & 0 & \cdots & F
 	\end{bmatrix}
 	\begin{bmatrix}
-		\hat{x}(t|t_{j-1}) \\
-		\pd{\hat{x}(t|t_{j-1})}{\theta_1} \\
+		P(t|t_{j-1}) \\
+		\pd{P(t|t_{j-1})}{\theta_1} \\
 		\vdots \\
-		\pd{\hat{x}(t|t_{j-1})}{\theta_s}
+		\pd{P(t|t_{j-1})}{\theta_s}
+	\end{bmatrix} + \\ +
+	\begin{bmatrix}
+		P(t|t_{j-1}) & 0 & \ldots & 0 \\
+		\pd{P(t|t_{j-1})}{\theta_1} & P(t|t_{j-1}) & \ldots & 0 \\
+		\vdots & \vdots & \vdots & \vdots \\
+		\pd{P(t|t_{j-1})}{\theta_s} & 0 & \ldots & P(t|t_{j-1})
+	\end{bmatrix}
+	\begin{bmatrix}
+		F^T \\
+		\pd{F^T}{\theta_1} \\
+		\vdots \\
+		\pd{F^T}{\theta_s}
+	\end{bmatrix} + \\
+	\begin{bmatrix}
+		G Q G^T \\
+		\pd{G}{\theta_1} Q G^T \\
+		\vdots \\
+		\pd{G}{\theta_s} Q G^T 
 	\end{bmatrix} +
 	\begin{bmatrix}
-		C u(t) \\
-		\pd{C}{\theta_1} u(t) \\
+		0 \\
+		G \pd{Q}{\theta_1} G^T \\
 		\vdots \\
-		\pd{C}{\theta_s} u(t)
-	\end{bmatrix},\\ t_{j-1} \le t \le t_j,\ j = 1,\ldots,N.
-	\hspace{0.25\textwidth}
-\end{multline*}
+		G \pd{Q}{\theta_s} G^T
+	\end{bmatrix} +
+	\begin{bmatrix}
+		0 \\
+		G Q \pd{G^T}{\theta_1} \\
+		\vdots \\
+		G Q \pd{G^T}{\theta_s}
+	\end{bmatrix}
+	\\ t_{j-1} \le t \le t_j,\ j = 1,\ldots,N.
+\end{gather*}
 Получаем $P(t_k|t_{k-1})$ при фиксированном значении вектора неизвестных
 параметров $\Theta$.
 
@@ -374,7 +407,7 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 	\begin{itemize}
 		\item для $k = 1$
 			\begin{multline*}
-				\ol{x}(t_k|t_{k-1}) =
+				\ol{x}_A(t_1|t_{0}) =
 				\begin{bmatrix}
 					\exp[ F(t_1 - t_0) ] \\
 					(t_1 - t_0) \pd{F}{\theta_1} \exp[ F(t_1 - t_0) ] \\
@@ -393,7 +426,7 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 				\end{multline*}
 		\item для $k > 1$
 			\[
-				F_A (t_k, t_{k-1}) \ol{x}_A(t_{k-1}|t_{k-2}) + 
+				\ol{x}_A(t_k|t_{k-1}) = F_A (t_k, t_{k-1}) \ol{x}_A(t_{k-1}|t_{k-2}) + 
 					\int\limits_{t_{k-1}}^{t_k} C_A(t_k, \tau) u(\tau) d\tau.
 			\]
 	\end{itemize}
