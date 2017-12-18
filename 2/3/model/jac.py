@@ -13,10 +13,10 @@ a = tf.convert_to_tensor(a)
 
 # derivative of matrix 'a' w.r.t vector 'x'
 def matderiv(a, x):
-    mn = tf.size(a)
+    N = tf.size(a)
     m, n = a.get_shape()
 
-    a = tf.reshape(a, [mn])
+    a = tf.reshape(a, [N])
 
     def cond(i, N, rez):
         return tf.less(i, N)
@@ -37,11 +37,10 @@ def matderiv(a, x):
     rez = tf.gradients(elem, x)[0]
     rez = tf.reshape(rez, [s, 1])
 
-    loop = tf.while_loop(cond, body, [1, mn, rez], shape_invariants)
+    loop = tf.while_loop(cond, body, [1, N, rez], shape_invariants)
 
     rez = loop[2]
 
-    # FIXME
     rez = tf.reshape(rez, [s, m, n])
     return rez
 
