@@ -265,7 +265,7 @@ class Model(object):
             y = tf.placeholder(tf.float64, shape=[m, None], name='y')
 
             N = tf.stack([tf.shape(t)[0]])
-            N = tf.reshpe(N, ())
+            N = tf.reshape(N, ())
 
             F = tf.convert_to_tensor(self.__tf_F(th), tf.float64)
             F.set_shape([n, n])
