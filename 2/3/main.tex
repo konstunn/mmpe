@@ -241,94 +241,150 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 
 \newpage
 
-\item Вычислим начальные условия для уравнений чувствительности по следующей
-	формуле:
-\begin{itemize}
-		\item для $j=1$
-\begin{equation}
-	\label{eq:init_cond_1}
-	\begin{bmatrix} 
-		P(t_0|t_0) \\ 
-		\pd{P(t_0|t_0)}{\theta_1} \\
-		\pd{P(t_0|t_0)}{\theta_2} \\
-		\vdots \\
-		\pd{P(t_0|t_0)}{\theta_s}
-	\end{bmatrix} =
-	\begin{bmatrix}
-		P_0 \\
-		\pd{P_0}{\theta_1} \\
-		\pd{P_0}{\theta_2} \\
-		\vdots \\
-		\pd{P_0}{\theta_s}
-	\end{bmatrix}
-\end{equation}
-\item для $j=2,3,\ldots,N$
-	\begin{multline}
-		\label{eq:init_cond_2}
-		\hspace{0.3\textwidth}
+\newcommand{\deriv}[2]{\frac{d #1}{d #2}}
+
+\item Решив следующие матричные дифференциальные уравнения (ДУ) в обратном
+	времени:
+	\begin{align*}
+		\deriv{\Phi(t_{k+1}, \tau)}{\tau} &= - \Phi(t_{k+1}, \tau) F(\tau), \tau \in
+			[t_k, t_{k+1}]; \\
+		\Phi(t_{k+1}, t_{k+1}) &= I, 
+	\end{align*}
+	\begin{align*}
+		\deriv{}{\tau} \left( \pd{\Phi(t_{k+1}, \tau)}{\theta_i} \right) &=
+			- \pd{\Phi(t_{k+1}, \tau)}{\theta_i} F(\tau) - \Phi(t_{k+1}, \tau)
+			\pd{F(\tau)}{\theta_i}, \tau \in [t_k, t_{k+1}]; \\
+		\pd{\Phi(t_{k+1}, \tau)}{\theta_i} &= O,
+	\end{align*}
+	найти \{$\Phi(t_{k+1}, \tau), \tau \in [t_k, t_{k+1}]\}$ и 
+		$\left\{ \pd{\Phi(t_{k+1}, \tau)}{\theta_i},\ i=1,2,\ldots,s,\ \tau \in
+		[t_k, t_{k+1}] \right\}$.
+
+	\item Если $k=0$, вычислить $\ol{x}_A(t_{k+1})$ и $\Sigma_A(t_{k+1})$ по
+		следующим формулам:
+		\begin{align*}
+			\ol{x}_A(t_{k+1}) = \hspace{0.4\textwidth} \\
 		\begin{bmatrix}
-			P(t_j|t_j) \\
-			\pd{P(t_j|t_j)}{\theta_1} \\
+			\Phi(t_1, t_0) \ol{x}(t_0) + \int\limits_{t_0}^{t_1} \Phi(t_1, \tau)
+				C u(\tau) d\tau \\
+			\pd{\Phi(t_1, t_0)}{\theta_1} \ol{x}(t_0) + \Phi(t_1, t_0)
+				\pd{\ol{x}(t_0)}{\theta_1} + \int\limits_{t_0}^{t_1} 
+				\left[ \pd{\Phi(t_1, \tau)}{\theta_1} Cu(\tau) + \Phi(t_1, \tau) 
+				\pd{C}{\theta_1} u(\tau) \right] d\tau \\
 			\vdots \\
-			\pd{P(t_j|t_j)}{\theta_s}
-		\end{bmatrix} = \\ =
-	  \begin{bmatrix}
-			\left\{ I - K(t_j) H \right\} P(t_j|t_{j-1}) \\ 
-			\left[
-				-\pd{K(t_j)}{\theta_1} H - K(t_j) \pd{H}{\theta_1} \right]
-			P(t_j|t_{j-1}) + \left\{ I - K(t_j) H \right\}
-			\pd{P(t_j|t_{j-1})}{\theta_1} \\
-			\vdots \\
-			\left[
-				-\pd{K(t_j)}{\theta_s} H - K(t_j) \pd{H}{\theta_s} \right]
-			P(t_j|t_{j-1}) + \left\{ I - K(t_j) H \right\}
-			\pd{P(t_j|t_{j-1})}{\theta_s} 
-		\end{bmatrix}.
-	\end{multline}
-\end{itemize}
+			\pd{\Phi(t_1, t_0)}{\theta_s} \ol{x}(t_0) + \Phi(t_1, t_0)
+				\pd{\ol{x}(t_0)}{\theta_s} + \int\limits_{t_0}^{t_1} 
+				\left[ \pd{\Phi(t_1, \tau)}{\theta_s} Cu(\tau) + \Phi(t_1, \tau) 
+				\pd{C}{\theta_s} u(\tau) \right] d\tau 
+		\end{bmatrix},
+	\end{align*}
+		\[
+			\Sigma_A(t_{k+1}) = O,
+		\]
+	и перейти на шаг 7.
 
-\newpage
+	\item Найти $\tilde{K}(t_{k+1}, t_k)$ при помощи выражения 
+	\[
+		\tilde{K}(t_{k+1}, t_k) = \Phi(t_{k+1}, t_k) K(t_k),
+	\]
+	и $\left\{ \pd{\tilde{K}(t_{k+1}, t_k)}{\theta_i},\ i=1,2,\ldots,s \right\}$
+	по формуле
+		\[
+			\pd{\tilde{K}(t_{k+1}, t_k)}{\theta_i} = 
+				\pd{\Phi(t_{k+1}, t_k)}{\theta_i} K(t_k) + \Phi(t_{k+1}, t_k)
+				\pd{K(t_k)}{\theta_i}.
+		\]
+	\item Сформировать матрицы $\Phi_A(t_{k+1}, t_k),\ K_A(t_{k+1}, t_k)$ и
+		вектор $a_A(t_{k+1}, t_k)$, воспользовавшись следующими равенствами:
+		\[
+			\Phi_A(t_{k+1}, t_k) =
+			\begin{bmatrix}
+				\Phi(t_{k+1}, t_k) & O & \ldots & O \\
+				\pd{\Phi(t_{k+1}, t_k)}{\theta_1} - \tilde{K}(t_{k+1}, t_k)
+					\pd{H}{\theta_1} & \phi_A(t_{k+1}, t_k) & \ldots & O \\
+				\vdots & \vdots & \ddots & \vdots \\
+				\pd{\Phi(t_{k+1}, t_k)}{\theta_s} - \tilde{K}(t_{k+1}, t_k)
+					\pd{H}{\theta_s} & O & \ldots & \phi_A(t_{k+1}, t_k)
+			\end{bmatrix},
+		\]
+		\[
+			\phi_A(t_{k+1}, t_k) = \Phi(t_{k+1}, t_k) - \tilde{K}(t_{k+1}, t_k) H,
+		\]
+		\[
+			K_A(t_{k+1}, t_k) =
+			\begin{bmatrix}
+				\tilde{K}(t_{k+1}, t_k) \\
+				\pd{\tilde{K}(t_{k+1}, t_k)}{\theta_1} \\
+				\vdots \\
+				\pd{\tilde{K}(t_{k+1}, t_k)}{\theta_s} \\
+			\end{bmatrix},
+		\]
+		\[
+			a_A(t_{k+1}, t_k) =
+			\begin{bmatrix}
+				\int\limits_{t_k}^{t_{k+1}} \Phi(t_{k+1}, \tau) a(\tau) d\tau \\
+				\int\limits_{t_k}^{t_{k+1}} \left[ \pd{\Phi(t_{k+1}, \tau)}{\theta_1} 
+					a(\tau) + \Phi(t_{k+1}, \tau) \pd{a(\tau)}{\theta_1} \right] d\tau \\
+				\vdots \\
+				\int\limits_{t_k}^{t_{k+1}} \left[ \pd{\Phi(t_{k+1}, \tau)}{\theta_s} 
+					a(\tau) + \Phi(t_{k+1}, \tau) \pd{a(\tau)}{\theta_s} \right] d\tau 
+			\end{bmatrix},
+		\]
+		\[
+			a(t) = C u(t).
+		\]
 
-% FIXME
-\item Решим уравнения чувствительности для ковариационной матрицы оценки
-	вектора состояний
-\begin{gather*}
-	\frac{d}{dt}	
+	\item Вычислить $\ol{x}_A(t_{k+1})$ и $\Sigma_A(t_{k+1})$ по следующим
+		формулам:
+		\[
+			\ol{x}_A(t_{k+1}) = \Phi(t_{k+1}, t_k) \ol{x}_A(t_k) + a_A(t_{k+1}, t_k),
+		\]
+		\[
+			\Sigma_A(t_{k+1}) = \Phi_A(t_{k+1}, t_k) \Sigma_A(t_k) \Phi_A^T(t_{k+1},
+			t_k) + K_A(t_{k+1}, t_k) B(t_k) K_A^T(t_{k+1}, t_k).
+		\]
+
+	\newpage
+
+	\item Найти $P(t_{k+1}, t_k)$ и $\left\{\pd{P(t_{k+1}, t_k)}{\theta_i},\
+		i=1,2,\ldots,s;\right\}$ путем решения матричного ДУ
+		\begin{gather*}
+	\frac{d}{d\tau}	
 	\begin{bmatrix}
-		P(t|t_{j-1}) \\
-		\pd{P(t|t_{j-1})}{\theta_1} \\
+		P(\tau|t_k) \\
+		\pd{P(\tau|t_k)}{\theta_1} \\
 		\vdots \\
-		\pd{P(t|t_{j-1})}{\theta_s} \\
+		\pd{P(\tau|t_k)}{\theta_s} \\
 	\end{bmatrix} = \\
 	\begin{bmatrix}
-		F P(t|t_{j-1}) + P(t|t_{j-1}) F^T + GQG^T \\
-		\pd{F}{\theta_1} P(t|t_{j-1}) + F \pd{P(t|t_{j-1})}{\theta_1} +
-			\pd{P(t|t_{j-1})}{\theta_1} F^T + P(t|t_{j-1}) \pd{F^T}{\theta_1} + \\
+		F P(\tau|t_k) + P(\tau|t_k) F^T + GQG^T \\
+		\pd{F}{\theta_1} P(\tau|t_k) + F \pd{P(\tau|t_k)}{\theta_1} +
+			\pd{P(\tau|t_k)}{\theta_1} F^T + P(\tau|t_k) \pd{F^T}{\theta_1} + \\
 			+ \pd{G}{\theta_1} Q G^T + G \pd{Q}{\theta_1} G^T +
 			G Q \pd{G^T}{\theta_1} \\
 		\vdots \\
-		\pd{F}{\theta_s} P(t|t_{j-1}) + F \pd{P(t|t_{j-1})}{\theta_s} +
-			\pd{P(t|t_{j-1})}{\theta_s} F^T + P(t|t_{j-1}) \pd{F^T}{\theta_s} + \\
+		\pd{F}{\theta_s} P(\tau|t_k) + F \pd{P(\tau|t_k)}{\theta_s} +
+			\pd{P(\tau|t_k)}{\theta_s} F^T + P(\tau|t_k) \pd{F^T}{\theta_s} + \\
 			+ \pd{G}{\theta_s} Q G^T + G \pd{Q}{\theta_s} G^T +
 			G Q \pd{G^T}{\theta_s}  
 	\end{bmatrix} = \\ =
 	\begin{bmatrix}
-		F & 0 & \cdots & 0 \\
-		\pd{F}{\theta_1} & F & \cdots & 0 \\
+		F & O & \cdots & O \\
+		\pd{F}{\theta_1} & F & \cdots & O \\
 		\vdots & \vdots & \ddots & \vdots \\
-		\pd{F}{\theta_s} & 0 & \cdots & F
+		\pd{F}{\theta_s} & O & \cdots & F
 	\end{bmatrix}
 	\begin{bmatrix}
-		P(t|t_{j-1}) \\
-		\pd{P(t|t_{j-1})}{\theta_1} \\
+		P(\tau|t_k) \\
+		\pd{P(\tau|t_k)}{\theta_1} \\
 		\vdots \\
-		\pd{P(t|t_{j-1})}{\theta_s}
+		\pd{P(\tau|t_k)}{\theta_s}
 	\end{bmatrix} + \\ +
 	\begin{bmatrix}
-		P(t|t_{j-1}) & 0 & \ldots & 0 \\
-		\pd{P(t|t_{j-1})}{\theta_1} & P(t|t_{j-1}) & \ldots & 0 \\
-		\vdots & \vdots & \vdots & \vdots \\
-		\pd{P(t|t_{j-1})}{\theta_s} & 0 & \ldots & P(t|t_{j-1})
+		P(\tau|t_k) & O & \ldots & O \\
+		\pd{P(\tau|t_k)}{\theta_1} & P(\tau|t_k) & \ldots & O \\
+		\vdots & \vdots & \ddots & \vdots \\
+		\pd{P(\tau|t_k)}{\theta_s} & O & \ldots & P(\tau|t_k)
 	\end{bmatrix}
 	\begin{bmatrix}
 		F^T \\
@@ -343,137 +399,58 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 		\pd{G}{\theta_s} Q G^T 
 	\end{bmatrix} +
 	\begin{bmatrix}
-		0 \\
+		O \\
 		G \pd{Q}{\theta_1} G^T \\
 		\vdots \\
 		G \pd{Q}{\theta_s} G^T
 	\end{bmatrix} +
 	\begin{bmatrix}
-		0 \\
+		O \\
 		G Q \pd{G^T}{\theta_1} \\
 		\vdots \\
 		G Q \pd{G^T}{\theta_s}
-	\end{bmatrix}
-	\\ t_{j-1} \le t \le t_j,\ j = 1,\ldots,N.
+	\end{bmatrix},\ \tau \in [t_k, t_{k+1}],
 \end{gather*}
-Получаем $P(t_k|t_{k-1})$ при фиксированном значении вектора неизвестных
-параметров $\Theta$.
+при известных значениях $P(t_k|t_k)$ и
+	$\left\{ \pd{P(t_k| t_k)}{\theta_i},\ i = 1,2,\ldots,s \right\}$.
 
-\item Вычислим
-\[
-	B(t_k) = H P(t_k|t_{k-1}) H^T + R; \\
-\]
-\begin{multline*}
-	\pd{B(t_j)}{\theta_i} = \pd{H}{\theta_i} P(t_j|t_{j-1}) H^T + H
-	\pd{P(t_j|t_{j-1})}{\theta_i} H^T + \\ + H P(t_j|t_{j-1}) \pd{H^T}{\theta_i} +
-	\pd{R}{\theta_i},\ i = 1, 2, \ldots, s.
-\end{multline*}
-
-\item Вычислим
-\[
-	K(t_k) = P(t_k|t_{k-1}) H^T \inv{B}(t_k);
-\]
-\begin{multline*}
-	\pd{K(t_k)}{\theta_i} = \pd{P(t_k|t_{k-1})}{\theta_i} H^T \inv{B}(t_k) +
-		P(t_k|t_{k-1}) \pd{H^T}{\theta_i} \inv{B}(t_k) + \\ - P(t_k|t_{k-1}) H^T
-		\inv{B}(t_k) \pd{B(t_k)}{\theta_i} \inv{B}(t_k),\ i = 1, 2, \ldots, s.
-\end{multline*}
-
-\item Вычислим
-\[
-	\tilde{K}(t_k) = \exp \left[ F(t_{k+1} - t_k) \right] K(t_k) = \Phi_{k+1}
-		K(t_k);
-\]
-\[
-	\pd{\tilde{K}(t_k)}{\theta_i} = (t_{k+1} - t_k) \pd{F}{\theta_i} \Phi_{k+1}
-		K(t_k) + \Phi_{k+1} \pd{K(t_k)}{\theta_i},\ i = 1, 2, \ldots, s.
-\]
-
-\item Вычислим $\Sigma_A(t_k|t_{k-1})$ по следующим формулам:
-	\begin{itemize}
-		\item если $k = 1$,
-			\[
-				\Sigma_A(t_1|t_0) = 0,
-			\]
-		\item если $k > 1$,
-			\begin{multline*}
-				\Sigma_A(t_k|t_{k-1}) = F_A(t_k, t_{k-1}) \Sigma_A(t_{k-1}|t_{k-2})
-					F_A^T(t_k, t_{k-1}) + \\ + \tilde{K}_A(t_{k-1}) B(t_{k-1})
-					\tilde{K}_A^T(t_{k-1}).
-			\end{multline*}
-	\end{itemize}
-
-\item Определим $\ol{x}_A(t_k|t_{k-1})$ при помощи выражения:
-	\begin{itemize}
-		\item для $k = 1$
-			\begin{multline*}
-				\ol{x}_A(t_1|t_{0}) =
-				\begin{bmatrix}
-					\exp[ F(t_1 - t_0) ] \\
-					(t_1 - t_0) \pd{F}{\theta_1} \exp[ F(t_1 - t_0) ] \\
-					\vdots \\
-					(t_1 - t_0) \pd{F}{\theta_s} \exp[ F(t_1 - t_0) ] \\
-				\end{bmatrix}
-				\ol{x}_0 +
-					\begin{bmatrix}
-						0 \\
-						\exp [ F(t_1 - t_0) ] \pd{\ol{x}_0}{\theta_1} \\
-						\vdots \\
-						\exp [ F(t_1 - t_0) ] \pd{\ol{x}_0}{\theta_s} \\
-					\end{bmatrix}
-					\pd{\ol{x}_0}{\theta_i} + \\ +
-					\int\limits_{t_0}^{t_1} C_A(t_1, \tau) u(\tau) d\tau,
-				\end{multline*}
-		\item для $k > 1$
-			\[
-				\ol{x}_A(t_k|t_{k-1}) = F_A (t_k, t_{k-1}) \ol{x}_A(t_{k-1}|t_{k-2}) + 
-					\int\limits_{t_{k-1}}^{t_k} C_A(t_k, \tau) u(\tau) d\tau.
-			\]
-	\end{itemize}
-
-\item Сформируем матрицу $F_A(t_{k+1}, t_k)$ следующим образом:
-\begin{gather*}
-	F_A(t_k, t_{k-1}) = \\
-	\begin{bmatrix}
-		\Phi_k & 0 & \cdots & 0 \\
-		(t_k - t_{k-1}) \pd{F}{\theta_1} \Phi_k - \tilde{K}(t_{k-1})
-			\pd{H}{\theta_1} & \Phi_k - \tilde{K}(t_{k-1}) H & \cdots & 0 \\
-		\vdots & \vdots & \ddots & \vdots \\
-		(t_k - t_{k-1}) \pd{F}{\theta_s} \Phi_k - \tilde{K}(t_{k-1})
-			\pd{H}{\theta_1} & 0 & \cdots & \Phi_k - \tilde{K}(t_{k-1}) H
-	\end{bmatrix},
-\end{gather*}
-сформируем матрицу $C_A(t_{k+1}, \tau)$ следующим образом:
+\item Вычислить
 	\[
-		C_A(t_k, \tau) =
-		\begin{bmatrix}
-			\exp[ F(t_k - \tau) ] C \\
-			(t_k - \tau) \exp[F(t_k - \tau)] C + \exp[ F(t_k - \tau) ]
-				\pd{C}{\theta_1} \\
-			\vdots \\
-			(t_k - \tau) \exp[F(t_k - \tau)] C + \exp[ F(t_k - \tau) ]
-				\pd{C}{\theta_s} 
-		\end{bmatrix},
+		B(t_k) = H P(t_{k+1}|t_k) H^T + R,
 	\]
-матрицу $\tilde{K}_A(t_k)$ следующим образом:
-\[
-	\tilde{K}_A(t_k) =
-	\begin{bmatrix}
-		\tilde{K}(t_{k-1}) \\
-		\pd{\tilde{K}(t_{k-1})}{\theta_1} \\
-		\vdots \\
-		\pd{\tilde{K}(t_{k-1})}{\theta_s} \\
-	\end{bmatrix}.
-\]
+	\begin{align*}
+		\pd{B(t_k)}{\theta_i} = \pd{H}{\theta_i} P(t_{k+1}|t_k) H^T + 
+			H + \pd{P(t_{k+1}|t_k)}{\theta_i} H^T + H P(t_{k+1}|t_k)
+			\pd{H^T}{\theta_i} + \pd{R}{\theta_i}, \\
+		i = 1,2,\ldots,s;
+	\end{align*}
+	\[
+		K(t_{k+1}) = P(t_{k+1}|t_k) H^T \inv{B(t_{k+1})}
+	\]
+	\begin{multline*}
+		\pd{K(t_k)}{\theta_i} = \pd{P(t_k|t_{k-1})}{\theta_i} H^T \inv{B}(t_k) +
+			P(t_k|t_{k-1}) \pd{H^T}{\theta_i} \inv{B}(t_k) + \\ - P(t_k|t_{k-1}) H^T
+			\inv{B}(t_k) \pd{B(t_k)}{\theta_i} \inv{B}(t_k),\ i = 1, 2, \ldots, s.
+	\end{multline*}
+	\[
+		P(t_{k+1}|t_{k+1}) = [ I - K(t_{k+1}) H ] P(t_{k+1}|t_k),
+	\]
+	\begin{multline*}
+		\pd{P(t_{k+1}|t_{k+1})}{\theta_i} =
+			[ I - K(t_{k+1}) H ] \pd{P(t_{k+1}|t_k}{\theta_i} + \\ -
+			\left[
+				\pd{K(t_{k+1})}{\theta_i} H + K(t_{k+1}) \pd{H}{\theta_i}
+			\right]
+			P(t_{k+1}|t_k).
+	\end{multline*}
 
-\item Используя выражение (\ref{eq:fim}), получить приращение 
-	$\Delta M(\Theta)$, отвечающее текущему значению $k$.
+\item Используя выражение (\ref{eq:fim}), получить приращение
+	$\Delta M(\Theta)$, соответствующее текущему значению $k$.
 
-\item Положим $M(\Theta) = M(\Theta) + \Delta M(\Theta)$.
+\item Положить $M(\Theta) = M(\Theta) + \Delta M(\Theta)$.
 
-\item Если $k = N$, то вычисления прекращаются, иначе --- вычислим следующие
-	начальные условия по формулам (\ref{eq:init_cond_1})--(\ref{eq:init_cond_2}),
-	$k$ заменим на $k + 1$ и осуществим переход на шаг 3.
+\item Увеличить $k$ на единицу. Если $k \le N-1$, перейти на шаг 2. В противном 
+	случае закончить процесс.
 
 \end{enumerate}
 
@@ -485,7 +462,7 @@ from model.model import Model
 import pylatex
 \end{pythontexcustomcode}
 
-\section{Пример}
+\section{Примеры}
 
 % TODO: print numpy arrays here instead of hardcoded matrices
 \[
