@@ -246,7 +246,47 @@ class Model(object):
 
             self.__sim_loop_op = sim_loop
 
-    def __define_fisher_matrix_computation(self):
+    # derivative of matrix 'a' w.r.t vector 'x'
+    def __matderiv(self, a, x):
+
+        def comp_grads(tensor, var_list):
+            grads = tf.gradients(tensor, var_list)
+            return [grad if grad is not None else tf.zeros_like(var)
+                    for var, grad in zip(var_list, grads)]
+
+        s = x.get_shape().as_list()[0]
+        N = tf.size(a)
+        m, n = a.get_shape()
+
+        a = tf.reshape(a, [N])
+
+        def cond(i, N, rez):
+            return tf.less(i, N)
+
+        def body(i, N, rez):
+            elem = tf.slice(a, [i], [1])
+            elem = comp_grads(elem, [x])
+            elem = tf.reshape(elem, [s, 1])
+            rez = tf.concat([rez, elem], 1)
+            i = i + 1
+            return i, N, rez
+
+        shape_invariants = [tf.TensorShape([]),
+                            tf.TensorShape([]),
+                            tf.TensorShape([s, None])]
+
+        elem = tf.slice(a, [0], [1])
+        rez = comp_grads(elem, [x])[0]
+        rez = tf.reshape(rez, [s, 1])
+
+        loop = tf.while_loop(cond, body, [1, N, rez], shape_invariants)
+
+        rez = loop[2]
+
+        rez = tf.reshape(rez, [s, m, n])
+        return rez
+
+    def __define_fim_computation(self):
 
         fim_graph = self.__fim_graph = tf.Graph()
 
