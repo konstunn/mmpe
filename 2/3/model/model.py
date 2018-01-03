@@ -84,6 +84,7 @@ class Model(object):
         self.__m = m = H.shape[0]
         self.__p = p = G.shape[1]
         self.__r = r = C.shape[1]
+        self.__s = len(th)
 
         x0_m = x0_m.reshape([n, 1])
 
@@ -294,6 +295,7 @@ class Model(object):
         m = self.__m
         n = self.__n
         p = self.__p
+        s = self.__s
 
         x0_mean = self.__tf_x0_mean
         x0_cov = self.__tf_x0_cov
@@ -333,6 +335,104 @@ class Model(object):
 
             I = tf.eye(n, n, dtype=tf.float64)
 
+            dF = self.__matderiv(F, th)
+            dC = self.__matderiv(C, th)
+            dG = self.__matderiv(G, th)
+            dH = self.__matderiv(H, th)
+            dQ = self.__matderiv(Q, th)
+            dR = self.__matderiv(R, th)
+            dP = self.__matderiv(P_0, th)
+            dX_0 = self.__matderiv(x0_mean, th)
+
+            # compute exponential decay
+            def mat_exp(F, t):
+                n = tf.shape(F)[0]
+                def ode(T, t):
+                    return -T @ F
+                T0 = tf.eye(n)
+                T = tf.contrib.integrate.odeint(ode, T0, t)
+                return tf.reverse(T, [0]), t
+
+            # TODO: try AD
+            # TODO: test
+            # compute exponential decay derivative w.r.t time
+            def mat_exp_deriv(F, dF, T, t_grid):
+                n = F.get_shape().as_list()[0]
+                s = dF.get_shape().as_list()[0]
+
+                def ode(dT, t):
+                    dT_F = tf.map_fn(lambda dTi: dTi @ F, dT)
+                    rhos = tf.abs(t_grid - t)
+                    min_rho = tf.reduce_min(rhos)
+                    idx = tf.where(tf.equal(rhos, min_rho))[0][0]
+                    T_t = tf.slice(T, [idx, 0, 0], [1, n, n])[0]
+                    T_dF = tf.map_fn(lambda dFi: T_t @ dFi, dF)
+                    return -dT_F - T_dF
+                dT0 = tf.zeros([s, n, n])
+                dT = tf.contrib.integrate.odeint(ode, dT0, t_grid)
+                return tf.reverse(dT, [0]), t
+
+            # if k == 0
+            # TODO: test
+            def comp_x_a_0(T, dT, C, dC, x_0, dx_0, u, t_grid):
+                n = C.get_shape().as_list()[0]
+                s = dC.get_shape().as_list()[0]
+
+                T_0 = tf.slice(T, [0, 0, 0], [1, n, n])[0]
+                dT_0 = tf.slice(dT, [0, 0, 0, 0], [1, s, n, n])[0]
+
+                T_x_0 = T_0 @ x_0
+                dT_x_0 = tf.map_fn(lambda dTi: dTi @ x_0, dT_0)
+                T_dx_0 = tf.map_fn(lambda dx_0_i: T_0 @ dx_0_i, dx_0)
+
+                def integral(x_a, t):
+                    rhos = tf.abs(t_grid - t)
+                    min_rho = tf.reduce_min(rhos)
+                    idx = tf.where(tf.equal(rhos, min_rho))[0][0]
+                    T_t = tf.slice(T, [idx, 0, 0], [1, n, n])[0]
+                    dT_t = tf.slice(dT, [idx, 0, 0, 0], [1, s, n, n])[0]
+                    u_k = u[idx]
+                    T_C_u = T_t @ C @ u_k
+                    dT_C_u = tf.map_fn(lambda dTi: dTi @ C @ u_k, dT_t)
+                    T_dC_u = tf.map_fn(lambda dCi: T_t @ dCi @ u_k, dC)
+                    derivs = dT_C_u + T_dC_u
+                    derivs = tf.concat(tf.unstack(derivs), axis=0)
+                    return tf.concat([T_C_u, derivs], axis=0)
+
+                init_val = tf.zeros([n*(s+1), 1])
+
+                int_vals = tf.contrib.integrate.odeint(integral, init_val,
+                                                       t_grid)
+
+                # reverse to slice the last (first)
+                int_vals = tf.reverse(int_vals, [0])
+                int_val = tf.slice(int_vals, [0, 0, 0], [1, n*(s+1), 1])[0]
+
+                dT_x_0__T_dx_0 = dT_x_0 + T_dx_0
+                dT_x_0__T_dx_0 = tf.concat(tf.unstack(dT_x_0__T_dx_0), axis=0)
+                return tf.concat([T_x_0, dT_x_0__T_dx_0], axis=0) + int_val
+
+            def block_diag_matrix(block, N):
+                n = block.get_shape().as_list()[0]
+
+                def cond(k, rez):
+                    return tf.less(k, N)
+
+                def body(k, rez):
+                    n_rows = tf.pad(block, [[0, 0], [k*n, (N-1-k)*n]])
+                    rez = tf.concat([rez, n_rows], axis=0)
+                    return k+1, rez
+
+                shape_invariants = [tf.TensorShape([]),
+                                    tf.TensorShape([None, None])]
+                _1st_n_rows = tf.pad(block, [[0, 0], [0, (N-1)*n]])
+                return tf.while_loop(cond, body, [1, _1st_n_rows],
+                                     shape_invariants)[1]
+
+            def comp_T_A(T, dT, K_):
+                pass
+
+            pass
 
     # defines graph
     def __define_likelihood_computation(self):
