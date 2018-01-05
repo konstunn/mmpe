@@ -441,6 +441,20 @@ class Model(object):
                 rez = tf.concat([first_row, rez], axis=0)
                 return rez
 
+            def predict_P_dP(F, dF, P, dP, G, dG, Q, dQ, t_grid):
+                def FdF_block_diag(F, dF):
+                    n = F.get_shape().as_list()[0]
+                    s = dF.get_shape().as_list()[0]
+                    F_block = block_diag_matrix(F, s)
+                    first_row = tf.pad(F, [[0, 0], [0, n*s]])
+                    derivs = tf.unstack(dF)
+                    derivs = tf.concat(derivs, axis=0)
+                    rez = tf.concat([derivs, F_block], axis=1)
+                    rez = tf.concat([first_row, rez], axis=0)
+                    return rez
+
+                def ode(PdP, t):
+                    pass
                 pass
 
             pass
