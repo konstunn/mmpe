@@ -346,7 +346,7 @@ class Model(object):
 
             # compute exponential decay
             def mat_exp(F, t):
-                n = tf.shape(F)[0]
+                n = F.get_shape().as_list()[0]
                 def ode(T, t):
                     return -T @ F
                 T0 = tf.eye(n)
