@@ -427,7 +427,20 @@ class Model(object):
                 return tf.while_loop(cond, body, [1, _1st_n_rows],
                                      shape_invariants)[1]
 
-            def comp_T_A(T, dT, K_):
+            def comp_T_A(H, dH, T, dT, K):
+                n = T.get_shape().as_list()[0]
+                s = dT.get_shape().as_list()[0]
+                K_ = T @ K
+                phi_a = T - K_ @ H
+                block_diag = block_diag_matrix(phi_a, s)
+                first_row = tf.pad(T, [[0, 0], [0, n*s]])
+                K_dH = tf.map_fn(lambda dHi: K_ @ dHi, dH)
+                derivs = tf.unstack(dT - K_dH)
+                derivs = tf.concat(derivs, axis=0)
+                rez = tf.concat([derivs, block_diag], axis=1)
+                rez = tf.concat([first_row, rez], axis=0)
+                return rez
+
                 pass
 
             pass
