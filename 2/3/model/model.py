@@ -354,7 +354,6 @@ class Model(object):
                 return tf.reverse(T, [0]), t
 
             # TODO: try AD
-            # TODO: test
             # compute exponential decay derivative w.r.t time
             def mat_exp_deriv(F, dF, T, t_grid):
                 n = F.get_shape().as_list()[0]
@@ -373,7 +372,6 @@ class Model(object):
                 return tf.reverse(dT, [0]), t
 
             # if k == 0
-            # TODO: test
             def comp_x_a_0(T, dT, C, dC, x_0, dx_0, u, t_grid):
                 n = C.get_shape().as_list()[0]
                 s = dC.get_shape().as_list()[0]
