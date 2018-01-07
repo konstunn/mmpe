@@ -439,7 +439,7 @@ class Model(object):
                 return rez
 
             def predict_P_dP(F, dF, P, dP, G, dG, Q, dQ, t_grid):
-                def FdF_block_diag(F, dF):
+                def build_F_dF_block_diag(F, dF):
                     n = F.get_shape().as_list()[0]
                     s = dF.get_shape().as_list()[0]
                     F_block = block_diag_matrix(F, s)
@@ -504,6 +504,8 @@ class Model(object):
                     PdP = PdP + GQdGt  # TODO: may tf.stack and tf.reduce_sum
                     return PdP
 
+                dP = tf.unstack(dP)
+                dP = tf.concat(dP, axis=0)
                 PdP = tf.concat([P, dP], axis=0)
                 PdP = tf.contrib.integrate.odeint(ode, PdP, t_grid)[-1]
                 return PdP  # XXX: may be better return 3-rank tensor, not 2
