@@ -295,7 +295,6 @@ class Model(object):
         m = self.__m
         n = self.__n
         p = self.__p
-        s = self.__s
 
         x0_mean = self.__tf_x0_mean
         x0_cov = self.__tf_x0_cov
@@ -332,8 +331,6 @@ class Model(object):
 
             R = tf.convert_to_tensor(self.__tf_v_cov(th), tf.float64)
             R.set_shape([m, m])
-
-            I = tf.eye(n, n, dtype=tf.float64)
 
             dF = self.__matderiv(F, th)
             dC = self.__matderiv(C, th)
