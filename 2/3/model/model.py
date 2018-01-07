@@ -453,9 +453,128 @@ class Model(object):
                     rez = tf.concat([first_row, rez], axis=0)
                     return rez
 
+                def build_P_dP_block_diag(PdP):
+                    n = PdP.get_shape().as_list()[1]
+                    s = int(PdP.get_shape().as_list()[0] / n - 1)
+                    P = tf.slice(PdP, [0, 0], [n, n])
+                    dP = tf.slice(PdP, [n, 0], [n*s, n])
+                    P_block = block_diag_matrix(P, s)
+                    first_row = tf.pad(P, [[0, 0], [0, n*s]])
+                    rez = tf.concat([dP, P_block], axis=1)
+                    rez = tf.concat([first_row, rez], axis=0)
+                    return rez
+
+                def build_FdF_transposed(F, dF):
+                    F = tf.stack([F])
+                    FdF = tf.concat([F, dF], axis=0)
+                    FdF_t = tf.map_fn(lambda FdF_i: tf.transpose(FdF_i), FdF)
+                    FdF_t = tf.unstack(FdF_t)
+                    FdF_t = tf.concat(FdF_t, axis=0)
+                    return FdF_t
+
+                def comp_GdG_Q_Gt(G, dG, Q):
+                    G_t = tf.transpose(G)
+                    GQGt = G @ Q @ G_t
+                    rest = tf.map_fn(lambda dG_i: dG_i @ Q @ G_t, dG)
+                    rest = tf.unstack(rest)
+                    rest = tf.concat(rest, 0)
+                    rez = tf.concat([GQGt, rest], 0)
+                    return rez
+
+                def comp_GdQGt(G, Q, dQ):
+                    n = G.get_shape().as_list()[0]
+                    G_t = tf.transpose(G)
+                    GdQGt = tf.map_fn(lambda dQ_i: G @ dQ_i @ G_t, dQ)
+                    GdQGt = tf.unstack(GdQGt)
+                    GdQGt = tf.concat(GdQGt, axis=0)
+                    return tf.pad(GdQGt, [[n, 0], [0, 0]])
+
+                def comp_GQdG_t(G, dG, Q):
+                    n = G.get_shape().as_list()[0]
+                    dGt = tf.map_fn(lambda dG_i: tf.transpose(dG_i), dG)
+                    GQdG_t = tf.map_fn(lambda dGt_i: G @ Q @ dGt_i, dGt)
+                    GQdG_t = tf.concat(tf.unstack(GQdG_t), axis=0)
+                    return tf.pad(GQdG_t, [[n, 0], [0, 0]])
+
                 def ode(PdP, t):
+                    F_dF_bdiag = build_F_dF_block_diag(F, dF)
+                    P_dP_bdiag = build_P_dP_block_diag(PdP)
+                    FdF_t = build_FdF_transposed(F, dF)
+                    dGQGt = comp_GdG_Q_Gt(G, dG, Q)
+                    GdQGt = comp_GdQGt(G, Q, dQ)
+                    GQdGt = comp_GQdG_t(G, dG, Q)
+                    PdP = F_dF_bdiag @ PdP + P_dP_bdiag @ FdF_t + dGQGt + GdQGt
+                    PdP = PdP + GQdGt  # TODO: may tf.stack and tf.reduce_sum
+                    return PdP
+
+                PdP = tf.concat([P, dP], axis=0)
+                PdP = tf.contrib.integrate.odeint(ode, PdP, t_grid)[-1]
+                return PdP  # XXX: may be better return 3-rank tensor, not 2
+
+            def comp_dB(H, dH, P, dP, dR):
+                Ht = tf.transpose(H)
+                dH_P_Ht = tf.map_fn(lambda dH_i: dH_i @ P @ Ht, dH)
+                H_dP_Ht = tf.map_fn(lambda dP_i: H @ dP_i @ Ht, dP)
+                H_P_dHt = tf.map_fn(lambda dH_i: H @ P @ tf.transpose(dH_i), dH)
+                return dH_P_Ht + H_dP_Ht + H_P_dHt + dR
+
+            def comp_dK(B, dB, H, dH, P, dP):
+                Ht = tf.transpose(H)
+                dHt = tf.map_fn(lambda dH_i: tf.tranpose(dH_i), dH)
+                invB = tf.matrix_inverse(B)
+                dP_Ht_invB = tf.map_fn(lambda dP_i: dP_i @ Ht @ invB, dP)
+                P_dHt_invB = tf.map_fn(lambda dHt_i: P @ dHt_i @ invB, dHt)
+                P_Ht_invB_dB_invB = tf.map_fn(
+                    lambda dB_i: P @ Ht @ invB @ dB_i @ invB, dB)
+                P_Ht_invB = P @ Ht @ invB
+                return dP_Ht_invB + P_dHt_invB - P_Ht_invB - P_Ht_invB_dB_invB
+
+            def update_P(H, K, P):
+                m = K.get_shape().as_list()[0]
+                I = tf.eye(m)
+                return (I - K @ H) @ P
+
+            def update_dP(H, dH, K, dK, P, dP):
+                m = K.get_shape().as_list()[0]
+                I = tf.eye(m)
+                _1st = tf.map_fn(lambda dP_i: (I - K @ H) @ dP_i, dP)
+                _2nd = tf.map_fn(lambda x: (x[0] @ H + K @ x[1]) @ P, (dK, dH))
+                return _1st - _2nd
+
+            def build_K_A(K_, dK_):
+                dK_ = tf.unstack(dK_)
+                dK_ = tf.concat(dK_, axis=0)
+                return tf.concat(K_, dK_, axis=0)
+
+            def comp_a_A(T, dT, C, dC, u, t_grid):
+                # 'u' is 3-rank tensor with shapes [N, r, 1]
+                def a(u):
+                    return C @ u
+
+                def da(u):
+                    return tf.map_fn(lambda dC_i: dC_i @ u, dC)
+
+                T0 = T[0]
+                a0 = a(u[0])
+                dT0 = dT[0]
+                da0 = da(u[0])
+                T0_a0 = T0 @ a0
+
+                dT0_a0 = tf.map_fn(lambda dT_i: dT_i @ a0, dT0)
+                T0_da0 = tf.map_fn(lambda da_i: T0 @ da_i, da0)
+
+                a_A_0 = dT0_a0 + T0_da0
+                a_A_0 = tf.unstack(a_A_0)
+                a_A_0 = tf.concat(a_A_0, axis=0)
+                a_A_0 = tf.concat([T0_a0, a_A_0], axis=0)
+
+                def ode(a_A, t):
+                    # TODO:
                     pass
-                pass
+
+                a_A = tf.contrib.integrate.odeint(ode, a_A_0, t_grid)[-1]
+
+                return a_A
 
             pass
 
