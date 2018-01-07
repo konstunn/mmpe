@@ -420,7 +420,7 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 	\]
 	\begin{align*}
 		\pd{B(t_k)}{\theta_i} = \pd{H}{\theta_i} P(t_{k+1}|t_k) H^T + 
-			H + \pd{P(t_{k+1}|t_k)}{\theta_i} H^T + H P(t_{k+1}|t_k)
+			H \pd{P(t_{k+1}|t_k)}{\theta_i} H^T + H P(t_{k+1}|t_k)
 			\pd{H^T}{\theta_i} + \pd{R}{\theta_i}, \\
 		i = 1,2,\ldots,s;
 	\end{align*}
