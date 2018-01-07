@@ -369,7 +369,8 @@ class Model(object):
                 return tf.reverse(dT, [0]), t
 
             # if k == 0
-            def comp_x_a_0(T, dT, C, dC, x_0, dx_0, u, t_grid):
+            def comp_x_a_0(T, dT, C, dC, x_0, dx_0, u_k, t_grid):
+                # XXX: 'u_k' is 2-rank tensor with shapes [r, 1]
                 n = C.get_shape().as_list()[0]
                 s = dC.get_shape().as_list()[0]
 
@@ -386,7 +387,6 @@ class Model(object):
                     idx = tf.where(tf.equal(rhos, min_rho))[0][0]
                     T_t = tf.slice(T, [idx, 0, 0], [1, n, n])[0]
                     dT_t = tf.slice(dT, [idx, 0, 0, 0], [1, s, n, n])[0]
-                    u_k = u[idx]
                     T_C_u = T_t @ C @ u_k
                     dT_C_u = tf.map_fn(lambda dTi: dTi @ C @ u_k, dT_t)
                     T_dC_u = tf.map_fn(lambda dCi: T_t @ dCi @ u_k, dC)
