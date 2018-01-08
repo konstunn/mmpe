@@ -505,11 +505,17 @@ class Model(object):
                     PdP = PdP + GQdGt  # TODO: may tf.stack and tf.reduce_sum
                     return PdP
 
+                n = F.get_shape().as_list()[0]
+                s = dF.get_shape().as_list()[0]
+
                 dP = tf.unstack(dP)
                 dP = tf.concat(dP, axis=0)
                 PdP = tf.concat([P, dP], axis=0)
                 PdP = tf.contrib.integrate.odeint(ode, PdP, t_grid)[-1]
-                return PdP  # XXX: may be better return 3-rank tensor, not 2
+                P = tf.slice(PdP, [0, 0], [n, n])
+                dP = tf.slice(PdP, [n, n], [n*s, n])
+                dP = tf.reshape(dP, [s, n, n])
+                return P, dP
 
             def comp_dB(H, dH, P, dP, dR):
                 Ht = tf.transpose(H)
