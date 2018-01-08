@@ -543,9 +543,10 @@ class Model(object):
             def update_dP(H, dH, K, dK, P, dP):
                 m = K.get_shape().as_list()[0]
                 I = tf.eye(m)
-                _1st = tf.map_fn(lambda dP_i: (I - K @ H) @ dP_i, dP)
-                _2nd = tf.map_fn(lambda x: (x[0] @ H + K @ x[1]) @ P, (dK, dH))
-                return _1st - _2nd
+                I_K_H_dP = tf.map_fn(lambda dP_i: (I - K @ H) @ dP_i, dP)
+                dK_H = tf.map_fn(lambda dK_i: dK_i @ H, dK)
+                K_dH = tf.map_fn(lambda dH_i: K @ dH_i, dH)
+                return I_K_H_dP - (dK_H + K_dH)
 
             def build_K_A(K_, dK_):
                 dK_ = tf.unstack(dK_)
