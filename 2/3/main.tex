@@ -193,7 +193,7 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 
 \subsection{Информационная матрица Фишера (ИМФ)}
 
-\newcommand{\pred}[0]{t_{k}|t_{k-1}}
+\newcommand{\pred}[0]{t_{k+1}|t_{k}}
 \newcommand{\est}[0]{t_k|t_k}
 \newcommand{\fut}[0]{t_{k+1}}
 \newcommand{\upd}[0]{t_{k+1}|t_{k+1}}
@@ -209,24 +209,35 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 \begin{multline}
 	\label{eq:fim}
 	\hspace{0.5\textwidth} M_{ij}(U;\Th) =\\
-		= \sumlim{k=1}{N} \left\{ \Sp \left[ 
-		S_0 \left(\Sigma_A(\pred) + \ol{x}_A(\pred) \ol{x}^T_A(\pred) \right)
+		= \sumlim{k=0}{N-1} \left\{ \Sp \left[ 
+		S_0 \left(\Sigma_A(\fut) + \ol{x}_A(\fut) \ol{x}^T_A(\fut) \right)
 		S_0^T \pd{H^T}{\theta_j} \inv{B}(t_k) \pd{H}{\theta_i} \right] + \right. \\
 		\left.
-		+ \Sp\left[ S_0 \left( \Sigma_A(\pred) + \ol{x}(\pred)
-		\ol{x}^T(\pred) \right) S_j^T H^T \inv{B}(t_k) \pd{H}{\theta_i}
+		+ \Sp\left[ S_0 \left( \Sigma_A(\fut) + \ol{x}_A(\fut)
+		\ol{x}_A^T(\fut) \right) S_j^T H^T \inv{B}(t_k) \pd{H}{\theta_i}
 		\right] + \right. \\ \left.
-		+ \Sp\left[ S_i \left( \Sigma_A(\pred) + \ol{x}_A(\pred) \ol{x}^T_A(\pred)
+		+ \Sp\left[ S_i \left( \Sigma_A(\fut) + \ol{x}_A(\fut) \ol{x}^T_A(\fut)
 		\right) S_0^T \pd{H^T}{\theta_j} \inv{B}(t_k) H \right] + \right. \\ \left.
-		+ \Sp \left[ S_i \left( \Sigma_A(\pred) + \ol{x}_A(\pred) \ol{x}^T_A(\pred)
+		+ \Sp \left[ S_i \left( \Sigma_A(\fut) + \ol{x}_A(\fut) \ol{x}^T_A(\fut)
 		\right) S_j^T H^T \inv{B}(t_k) H \right] + \right. \\ \left.
 		+ \Sp \left[ \pd{B(t_k)}{\theta_i} \inv{B}(t_k) \pd{B(t_k)}{\theta_j} 
 		\right]  \right\},\qquad i,j = 1,2,\ldots,s.
 \end{multline}
+\newcommand\undermat[2]{%
+	  \makebox[0pt][l]{$\smash{\underbrace{\phantom{%
+			    \begin{matrix}#2\end{matrix}}}_{\text{$#1$}}}$}#2}
+\[
+	S_i = {\left[
+	\begin{array}{rrr|r|rrr}
+		\undermat{i}{O & \cdots & O} & I & 
+			\undermat{s-i}{O & \cdots & O} \\
+	\end{array}
+	\right]}_{n \times n(s+1)},\ i = 0, 1, \ldots, s.
+\]
 
 \subsubsection{Алгоритм вычисления ИМФ}
 \begin{enumerate}
-	\item Положим $k = 1,\ M(\Theta) = 0$. \\
+	\item Положим $k = 0,\ M(\Theta) = 0$. \\
 		Для заданного $\Theta = (\theta_1, \theta_2, \ldots, \theta_s)$ вычислим:
 \begin{align*}
 	F,\ \pd{F}{\theta_i},\ i=1,2,\ldots,s; \qquad &
@@ -236,7 +247,8 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 	G,\ \pd{G}{\theta_i},\ i=1,2,\ldots,s; \qquad &
 	\ol{x}_0,\ \pd{\ol{x}_0}{\theta_i},\ i=1,2,\ldots,s; \\
 	H,\ \pd{H}{\theta_i},\ i=1,2,\ldots,s; \qquad &
-	P_0,\ \pd{P_0}{\theta_i},\ i=1,2,\ldots,s.
+	P(t_k|t_k) = P_0,\ 
+		\pd{P(t_k|t_k)}{\theta_i} = \pd{P_0}{\theta_i},\ i=1,2,\ldots,s.
 \end{align*}
 
 \newpage
@@ -254,7 +266,7 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 		\deriv{}{\tau} \left( \pd{\Phi(t_{k+1}, \tau)}{\theta_i} \right) &=
 			- \pd{\Phi(t_{k+1}, \tau)}{\theta_i} F(\tau) - \Phi(t_{k+1}, \tau)
 			\pd{F(\tau)}{\theta_i}, \tau \in [t_k, t_{k+1}]; \\
-		\pd{\Phi(t_{k+1}, \tau)}{\theta_i} &= O,
+		\pd{\Phi(t_{k+1}, t_{k+1})}{\theta_i} &= O,
 	\end{align*}
 	найти \{$\Phi(t_{k+1}, \tau), \tau \in [t_k, t_{k+1}]\}$ и 
 		$\left\{ \pd{\Phi(t_{k+1}, \tau)}{\theta_i},\ i=1,2,\ldots,s,\ \tau \in
@@ -346,7 +358,7 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 
 	\newpage
 
-	\item Найти $P(t_{k+1}, t_k)$ и $\left\{\pd{P(t_{k+1}, t_k)}{\theta_i},\
+	\item Найти $P(t_{k+1}| t_k)$ и $\left\{\pd{P(t_{k+1}| t_k)}{\theta_i},\
 		i=1,2,\ldots,s;\right\}$ путем решения матричного ДУ
 		\begin{gather*}
 	\frac{d}{d\tau}	
@@ -437,7 +449,7 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 	\]
 	\begin{multline*}
 		\pd{P(t_{k+1}|t_{k+1})}{\theta_i} =
-			[ I - K(t_{k+1}) H ] \pd{P(t_{k+1}|t_k}{\theta_i} + \\ -
+			[ I - K(t_{k+1}) H ] \pd{P(t_{k+1}|t_k)}{\theta_i} + \\ -
 			\left[
 				\pd{K(t_{k+1})}{\theta_i} H + K(t_{k+1}) \pd{H}{\theta_i}
 			\right]
