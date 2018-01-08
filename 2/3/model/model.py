@@ -369,7 +369,7 @@ class Model(object):
                 return tf.reverse(dT, [0]), t
 
             # if k == 0
-            def comp_x_a_0(T, dT, C, dC, x_0, dx_0, u_k, t_grid):
+            def comp_x_A_0(T, dT, C, dC, x_0, dx_0, u_k, t_grid):
                 # XXX: 'u_k' is 2-rank tensor with shapes [r, 1]
                 n = C.get_shape().as_list()[0]
                 s = dC.get_shape().as_list()[0]
@@ -420,6 +420,7 @@ class Model(object):
 
                 shape_invariants = [tf.TensorShape([]),
                                     tf.TensorShape([None, None])]
+
                 _1st_n_rows = tf.pad(block, [[0, 0], [0, (N-1)*n]])
                 return tf.while_loop(cond, body, [1, _1st_n_rows],
                                      shape_invariants)[1]
