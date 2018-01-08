@@ -553,35 +553,31 @@ class Model(object):
                 dK_ = tf.concat(dK_, axis=0)
                 return tf.concat(K_, dK_, axis=0)
 
-            def comp_a_A(T, dT, C, dC, u, t_grid):
-                # 'u' is 3-rank tensor with shapes [N, r, 1]
-                def a(u):
-                    return C @ u
+            def comp_a_A(T, dT, C, dC, u_k, t_grid):
+                # 'u_k' is 2-rank tensor with shapes [r, 1]
 
-                def da(u):
-                    return tf.map_fn(lambda dC_i: dC_i @ u, dC)
+                a = C @ u_k
+                da = tf.map_fn(lambda dC_i: dC_i @ u_k, dC)
 
-                T0 = T[0]
-                a0 = a(u[0])
-                dT0 = dT[0]
-                da0 = da(u[0])
-                T0_a0 = T0 @ a0
+                def comp_a_A_k(T_k, dT_k):
+                    Tk_a = tf.stack([T_k @ a])
+                    dTk_a = tf.map_fn(lambda dT_i: dT_i @ a, dT_k)
+                    Tk_da = tf.map_fn(lambda da_i: T_k @ da_i, da)
+                    derivs = dTk_a + Tk_da
+                    return tf.concat([Tk_a, derivs], axis=0)  # 3-rank tensor
 
-                dT0_a0 = tf.map_fn(lambda dT_i: dT_i @ a0, dT0)
-                T0_da0 = tf.map_fn(lambda da_i: T0 @ da_i, da0)
-
-                a_A_0 = dT0_a0 + T0_da0
-                a_A_0 = tf.unstack(a_A_0)
-                a_A_0 = tf.concat(a_A_0, axis=0)
-                a_A_0 = tf.concat([T0_a0, a_A_0], axis=0)
-
+                # 'a_A' is 3-rank tensor
                 def ode(a_A, t):
-                    # TODO:
-                    pass
+                    rhos = tf.abs(t_grid - t)
+                    min_rho = tf.reduce_min(rhos)
+                    idx = tf.where(tf.equal(rhos, min_rho))[0][0]
+                    return comp_a_A_k(T[idx], dT[idx])
+
+                a_A_0 = comp_a_A_k(T[0], dT[0])
 
                 a_A = tf.contrib.integrate.odeint(ode, a_A_0, t_grid)[-1]
 
-                return a_A
+                return tf.concat(tf.unstack(a_A), axis=0)  # 2-rank tensor
 
             pass
 
