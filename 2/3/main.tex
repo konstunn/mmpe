@@ -428,10 +428,10 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 
 \item Вычислить
 	\[
-		B(t_k) = H P(t_{k+1}|t_k) H^T + R,
+		B(t_{k+1}) = H P(t_{k+1}|t_k) H^T + R,
 	\]
 	\begin{align*}
-		\pd{B(t_k)}{\theta_i} = \pd{H}{\theta_i} P(t_{k+1}|t_k) H^T + 
+		\pd{B(t_{k+1})}{\theta_i} = \pd{H}{\theta_i} P(t_{k+1}|t_k) H^T + 
 			H \pd{P(t_{k+1}|t_k)}{\theta_i} H^T + H P(t_{k+1}|t_k)
 			\pd{H^T}{\theta_i} + \pd{R}{\theta_i}, \\
 		i = 1,2,\ldots,s;
@@ -440,9 +440,11 @@ P(t_0)$ и в вектор $\overline{\vec{x}}(t_0)$ в различных ко�
 		K(t_{k+1}) = P(t_{k+1}|t_k) H^T \inv{B(t_{k+1})}
 	\]
 	\begin{multline*}
-		\pd{K(t_k)}{\theta_i} = \pd{P(t_k|t_{k-1})}{\theta_i} H^T \inv{B}(t_k) +
-			P(t_k|t_{k-1}) \pd{H^T}{\theta_i} \inv{B}(t_k) + \\ - P(t_k|t_{k-1}) H^T
-			\inv{B}(t_k) \pd{B(t_k)}{\theta_i} \inv{B}(t_k),\ i = 1, 2, \ldots, s.
+		\pd{K(t_{k+1})}{\theta_i} = \pd{P(t_{k+1}|t_{k})}{\theta_i} H^T 
+			\inv{B}(t_{k+1}) +
+			P(t_{k+1}|t_{k}) \pd{H^T}{\theta_i} \inv{B}(t_{k+1}) + \\ 
+			- P(t_{k+1}|t_{k}) H^T
+			\inv{B}(t_{k+1}) \pd{B(t_{k+1})}{\theta_i} \inv{B}(t_{k+1}),\ i = 1, 2, \ldots, s.
 	\end{multline*}
 	\[
 		P(t_{k+1}|t_{k+1}) = [ I - K(t_{k+1}) H ] P(t_{k+1}|t_k),
