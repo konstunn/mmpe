@@ -7,7 +7,6 @@ import autograd.numpy as np
 import autograd
 from tensorflow.contrib.distributions import MultivariateNormalFullCovariance
 import scipy
-import itertools
 import copy
 import operator
 
@@ -120,9 +119,11 @@ class Model(object):
         # define corresponding computational tensorflow graphs
         self.__define_observations_simulation()
         self.__define_likelihood_computation()
+        self.__define_fim_computation()
 
         self.__d_crit_to_opt_grad_f = autograd.grad(self.__d_crit_to_optimize)
 
+    # FIXME: fix for continuous
     def __define_observations_simulation(self):
         # TODO: reduce code not to create extra operations
 
@@ -203,6 +204,7 @@ class Model(object):
                 # TODO: this should be function of time
                 u_t_k = tf.slice(u, [0, k], [r, 1])
 
+                # FIXME: fix for continuous
                 def state_propagate(x):
                     w = w_dist.sample()
                     w = tf.reshape(w, [p, 1])
@@ -255,7 +257,7 @@ class Model(object):
             return [grad if grad is not None else tf.zeros_like(var)
                     for var, grad in zip(var_list, grads)]
 
-        s = x.get_shape().as_list()[0]
+        s = x.get_shape().as_list()[0]  # XXX: what if x shape is unknown
         N = tf.size(a)
         m, n = a.get_shape()
 
@@ -349,7 +351,7 @@ class Model(object):
                     return -T @ F
                 T0 = tf.eye(n)
                 T = tf.contrib.integrate.odeint(ode, T0, t)
-                return tf.reverse(T, [0]), t
+                return tf.reverse(T, [0])
 
             # TODO: try AD
             # compute exponential decay derivative w.r.t time
@@ -367,7 +369,7 @@ class Model(object):
                     return -dT_F - T_dF
                 dT0 = tf.zeros([s, n, n])
                 dT = tf.contrib.integrate.odeint(ode, dT0, t_grid)
-                return tf.reverse(dT, [0]), t
+                return tf.reverse(dT, [0])
 
             # if k == 0
             def comp_x_A_0(T, dT, C, dC, x_0, dx_0, u_k, t_grid):
@@ -375,8 +377,8 @@ class Model(object):
                 n = C.get_shape().as_list()[0]
                 s = dC.get_shape().as_list()[0]
 
-                T_0 = tf.slice(T, [0, 0, 0], [1, n, n])[0]
-                dT_0 = tf.slice(dT, [0, 0, 0, 0], [1, s, n, n])[0]
+                T_0 = T[0]
+                dT_0 = dT[0]
 
                 T_x_0 = T_0 @ x_0
                 dT_x_0 = tf.map_fn(lambda dTi: dTi @ x_0, dT_0)
@@ -386,8 +388,8 @@ class Model(object):
                     rhos = tf.abs(t_grid - t)
                     min_rho = tf.reduce_min(rhos)
                     idx = tf.where(tf.equal(rhos, min_rho))[0][0]
-                    T_t = tf.slice(T, [idx, 0, 0], [1, n, n])[0]
-                    dT_t = tf.slice(dT, [idx, 0, 0, 0], [1, s, n, n])[0]
+                    T_t = T[idx]
+                    dT_t = dT[idx]
                     T_C_u = T_t @ C @ u_k
                     dT_C_u = tf.map_fn(lambda dTi: dTi @ C @ u_k, dT_t)
                     T_dC_u = tf.map_fn(lambda dCi: T_t @ dCi @ u_k, dC)
@@ -441,6 +443,7 @@ class Model(object):
                 return rez
 
             def predict_P_dP(F, dF, P, dP, G, dG, Q, dQ, t_grid):
+
                 def build_F_dF_block_diag(F, dF):
                     n = F.get_shape().as_list()[0]
                     s = dF.get_shape().as_list()[0]
@@ -480,7 +483,7 @@ class Model(object):
                     rez = tf.concat([GQGt, rest], 0)
                     return rez
 
-                def comp_GdQGt(G, Q, dQ):
+                def comp_GdQGt(G, dQ):
                     n = G.get_shape().as_list()[0]
                     G_t = tf.transpose(G)
                     GdQGt = tf.map_fn(lambda dQ_i: G @ dQ_i @ G_t, dQ)
@@ -500,7 +503,7 @@ class Model(object):
                     P_dP_bdiag = build_P_dP_block_diag(PdP)
                     FdF_t = build_FdF_transposed(F, dF)
                     dGQGt = comp_GdG_Q_Gt(G, dG, Q)
-                    GdQGt = comp_GdQGt(G, Q, dQ)
+                    GdQGt = comp_GdQGt(G, dQ)
                     GQdGt = comp_GQdG_t(G, dG, Q)
                     PdP = F_dF_bdiag @ PdP + P_dP_bdiag @ FdF_t + dGQGt + GdQGt
                     PdP = PdP + GQdGt  # TODO: may tf.stack and tf.reduce_sum
@@ -512,9 +515,11 @@ class Model(object):
                 dP = tf.unstack(dP)
                 dP = tf.concat(dP, axis=0)
                 PdP = tf.concat([P, dP], axis=0)
-                PdP = tf.contrib.integrate.odeint(ode, PdP, t_grid)[-1]
+                PdP = tf.contrib.integrate.odeint(ode, PdP, t_grid, rtol=1e-2,
+                                                  atol=1e-3)
+                PdP = PdP[-1]
                 P = tf.slice(PdP, [0, 0], [n, n])
-                dP = tf.slice(PdP, [n, n], [n*s, n])
+                dP = tf.slice(PdP, [n, 0], [n*s, n])
                 dP = tf.reshape(dP, [s, n, n])
                 return P, dP
 
@@ -527,7 +532,7 @@ class Model(object):
 
             def comp_dK(B, dB, H, dH, P, dP):
                 Ht = tf.transpose(H)
-                dHt = tf.map_fn(lambda dH_i: tf.tranpose(dH_i), dH)
+                dHt = tf.map_fn(lambda dH_i: tf.transpose(dH_i), dH)
                 invB = tf.matrix_inverse(B)
                 dP_Ht_invB = tf.map_fn(lambda dP_i: dP_i @ Ht @ invB, dP)
                 P_dHt_invB = tf.map_fn(lambda dHt_i: P @ dHt_i @ invB, dHt)
@@ -552,7 +557,7 @@ class Model(object):
             def build_K_A(K_, dK_):
                 dK_ = tf.unstack(dK_)
                 dK_ = tf.concat(dK_, axis=0)
-                return tf.concat(K_, dK_, axis=0)
+                return tf.concat([K_, dK_], axis=0)
 
             def comp_a_A(T, dT, C, dC, u_k, t_grid):
                 # 'u_k' is 2-rank tensor with shapes [r, 1]
@@ -580,9 +585,123 @@ class Model(object):
 
                 return tf.concat(tf.unstack(a_A), axis=0)  # 2-rank tensor
 
-            pass
+            def S(n, s, i):
+                zeros = tf.zeros([n, n*i])
+                eye = tf.eye(n)
+                rez = tf.concat([zeros, eye], axis=1)
+                zeros = tf.zeros([n, n*(s-i)])
+                rez = tf.concat([rez, zeros], axis=1)
+                rez.set_shape([n, n*(s+1)])
+                return rez
 
-    # defines graph
+            def comp_dM(Sigma_A, x_A, H, dH, invB, dB):
+                s = dH.get_shape().as_list()[0]
+                Sigma_A__x_A__x_A_T = Sigma_A + x_A @ tf.transpose(x_A)
+
+                def cond(dM, l):
+                    return tf.less(l, s*s)
+
+                def body(dM, l):
+                    i = tf.div(l, s)
+                    j = tf.mod(l, s)
+                    S0 = S(n, s, 0)
+                    Sj = S(n, s, j)
+                    Si = S(n, s, i)
+                    SjT = tf.transpose(Sj)
+                    S0t = tf.transpose(S0)
+                    dHjT = tf.transpose(dH[j])
+                    dHi = dH[i]
+                    Ht = tf.transpose(H)
+                    _1 = S0 @ Sigma_A__x_A__x_A_T @ S0t @ dHjT @ invB @ dHi
+                    _1 = tf.trace(_1)
+                    _2 = S0 @ Sigma_A__x_A__x_A_T @ SjT @ Ht @ invB @ dHi
+                    _2 = tf.trace(_2)
+                    _3 = Si @ Sigma_A__x_A__x_A_T @ S0t @ dHjT @ invB @ H
+                    _3 = tf.trace(_3)
+                    _4 = Si @ Sigma_A__x_A__x_A_T @ SjT @ Ht @ invB @ H
+                    _4 = tf.trace(_4)
+                    _5 = tf.trace(dB[i] @ invB @ dB[j])
+                    elem = _1 + _2 + _3 + _4 + _5
+                    dM = tf.concat([dM, tf.stack([elem])], axis=0)
+                    return dM, l+1
+
+                dM0 = tf.zeros([0])
+                l = tf.constant(0)
+
+                shape_invariants = [tf.TensorShape([None]), l.get_shape()]
+
+                dM = tf.while_loop(cond, body, [dM0, l], shape_invariants)[0]
+                dM = tf.reshape(dM, [s, s])
+                return dM
+
+            def cond(M, k, B, K, dK, P, dP, Sigma_A, x_A):
+                return tf.less(k, N-1)
+
+            # TODO FIXME
+            def first_iteration(P, dP):
+                t_grid = tf.slice(t, [0], [2])
+                t_grid = tf.linspace(t_grid[0], t_grid[1], 100)
+                T = mat_exp(F, t_grid)
+                dT = mat_exp_deriv(F, dF, T, t_grid)
+                u_k = u[0]
+
+                x_A = comp_x_A_0(T, dT, C, dC, x0_mean, dX_0, u_k, t_grid)
+                shape = x_A.get_shape().as_list()[0]
+                Sigma_A = tf.zeros([shape, shape])
+                Pp, dPp = predict_P_dP(F, dF, P, dP, G, dG, Q, dQ, t_grid)
+                Ht = tf.transpose(H)
+                B = H @ Pp @ Ht + R
+                invB = tf.matrix_inverse(B)
+                dB = comp_dB(H, dH, Pp, dPp, dR)
+                K = Pp @ Ht @ invB
+                dK = comp_dK(B, dB, H, dH, Pp, dPp)
+                Pu = update_P(H, K, Pp)
+                dPu = update_dP(H, dH, K, dK, Pp, dPp)
+                dM = comp_dM(Sigma_A, x_A, H, dH, invB, dB)
+                return dM, 1, B, K, dK, Pu, dPu, Sigma_A, x_A
+
+            def body(M, k, B, K, dK, P, dP, Sigma_A, x_A):
+                t_grid = tf.slice(t, [k], [2])  # FIXME
+                t_grid = tf.linspace(t_grid[0], t_grid[1], 100)
+                T = mat_exp(F, t_grid)
+                dT = mat_exp_deriv(F, dF, T, t_grid)
+                u_k = u[k]
+
+                a_A = comp_a_A(T, dT, C, dC, u_k, t_grid)
+                T0 = T[0]
+                dT0 = dT[0]
+                K_ = T0 @ K
+                dT_K = tf.map_fn(lambda dT_i: dT_i @ K, dT0)
+                T_dK = tf.map_fn(lambda dK_i: T0 @ dK_i, dK)
+                dK_ = dT_K + T_dK
+                T_A = comp_T_A(H, dH, T0, dT0, K)
+                K_A = build_K_A(K_, dK_)
+                a_A = comp_a_A(T, dT, C, dC, u_k, t_grid)
+                x_A = T_A @ x_A + a_A
+                T_A_t = tf.transpose(T_A)
+                K_A_t = tf.transpose(K_A)
+                Sigma_A = T_A @ Sigma_A @ T_A_t + K_A @ B @ K_A_t
+                Ht = tf.transpose(H)
+                Pp, dPp = predict_P_dP(F, dF, P, dP, G, dG, Q, dQ, t_grid)
+                B = H @ Pp @ Ht + R
+                invB = tf.matrix_inverse(B)
+                dB = comp_dB(H, dH, Pp, dPp, dR)
+                K = Pp @ Ht @ invB
+                dK = comp_dK(B, dB, H, dH, P, dP)
+                Pu = update_P(H, K, Pp)
+                dPu = update_dP(H, dH, K, dK, Pp, dPp)
+                dM = comp_dM(Sigma_A, x_A, H, dH, invB, dB)
+                dM = dM + M
+                return dM, k+1, B, K, dK, Pu, dPu, Sigma_A, x_A
+
+            variables = first_iteration(P_0, dP)
+
+            fim_loop = tf.while_loop(cond, body, variables)[0]
+
+            self.__fim_loop_op = fim_loop
+
+
+    # defines graph, FIXME: for continuos
     def __define_likelihood_computation(self):
 
         self.__lik_graph = tf.Graph()
@@ -984,169 +1103,27 @@ class Model(object):
         rez['avg_y_rtol'] = avg_y_rtol
         return rez
 
-    def fim(self, u, x0=None, th=None):
+    def fim(self, u, t, th=None):
         """
         'u' is 2d numpy array [r x N]
         """
         if th is None:
             th = self.__th
-        else:
-            th = np.array(th)
 
-        s = len(th)
-        n = self.__n
-
-        lst = list()
-        lst.append(self.__F)
-        lst.append(self.__C)
-        lst.append(self.__G)
-        lst.append(self.__H)
-        lst.append(self.__w_cov)
-        lst.append(self.__v_cov)
-        lst.append(self.__x0_mean)
-        lst.append(self.__x0_cov)
-
-        # eval
-        jlst = [autograd.jacobian(f)(th) for f in lst]
-
-        # TODO: refactor?
-        jlst = [[np.squeeze(j, 2) for j in np.dsplit(jel, s)] for jel in jlst]
-
-        dF, dC, dG, dH, dQ, dR, dX0, dP0 = jlst
-
-        dX0 = [dX0_i.reshape([n, 1]) for dX0_i in dX0]
-
-        # eval
-        F, C, G, H, Q, R, X0, P0 = [f(th) for f in lst]
-
-        X0 = X0.reshape([n, 1])
-
-        if x0 is not None:
-            # on reshape fail exception will be raised
-            X0 = np.array(x0).reshape([n, 1])
-
-        C_A = np.vstack(dC)
-        C_A = np.vstack([C, C_A])
-
-        M = np.zeros([s, s])
-
-        t = np.transpose
-        inv = np.linalg.inv
-        Sp = np.trace
-        Pe = P0
-        dPe = dP0
-        Inn = np.eye(n)
-        On1 = np.zeros([n, 1])
-
-        # TODO: cast every thing to np.matrix and use '*' multiplication syntax
-
-        def F_A_f(F, dF, H, K_):
-            _1st_col = [dF_i - K_ @ dH_i for dF_i, dH_i in zip(dF, dH)]
-            _1st_col = np.vstack(_1st_col)
-
-            bdiag = scipy.linalg.block_diag(*[F - K_ @ H] * s)
-            rez = np.hstack([_1st_col, bdiag])
-
-            _1st_row = np.hstack([np.zeros([n, n])] * s)
-            _1st_row = np.hstack([F, _1st_row])
-
-            rez = np.vstack([_1st_row, rez])
-            return rez
-
-        def X_Ap_f(F_A, X_Ap, u, k):
-            if k == 0:
-                F_ = np.vstack(dF)
-                F_ = np.vstack([F, F_])
-
-                # force dX0_i to be 2D array
-                FdX0 = [F @ np.array(dX0_i, ndmin=2) for dX0_i in dX0]
-                FdX0 = np.vstack(FdX0)
-                OFdX0 = np.vstack([On1, FdX0])
-
-                # u[:,[k]] - get k-th column as column vector
-                return F_ @ X0 + OFdX0 + C_A @ u[:, [0]]
-            elif k > 0:
-                return F_A @ X_Ap + C_A @ u[:, [k]]
-
-        def Cf(i):
-            i = i + 1
-            zeros = [np.zeros([n, n])] * i
-            zeros = np.hstack(zeros) if i else []
-            C = np.hstack([zeros, np.eye(n)]) if i else np.eye(n)
-            zeros = [np.zeros([n, n])] * (s-i)
-            zeros = np.hstack(zeros) if s-i else []
-            C = np.hstack([C, zeros]) if s-i else C
-            return C
-
+        th = np.array(th).squeeze()
+        g = self.__fim_graph
         u = np.array(u, ndmin=2)
-        N = u.shape[1]
 
-        if u.shape[0] != C.shape[1]:
-            raise Exception('invalid shape of \'u\'')
+        if t.shape[0] != u.shape[1]:
+            raise Exception('''t.shape[0] != u.shape[1]''')
 
-        for k in range(N):
-            if k == 0:
-                E_A = np.zeros([n*(s+1), n*(s+1)])
-                X_Ap = X_Ap_f(None, None, u, k)
-                F_A = None
-                K_A = None
-                B = None
-            elif k > 0:
-                E_A = F_A @ E_A @ t(F_A) + K_A @ B @ t(K_A)
-                X_Ap = X_Ap_f(F_A, X_Ap, u, k)
+        with tf.Session(graph=g) as sess:
+            t_ph = g.get_tensor_by_name('t:0')
+            th_ph = g.get_tensor_by_name('th:0')
+            u_ph = g.get_tensor_by_name('u:0')
+            rez = sess.run(self.__fim_loop_op, {th_ph: th, t_ph: t, u_ph: u})
 
-            # Pp, B, K, Pu, K_
-            Pp = F @ Pe @ t(F) + G @ Q @ t(G)
-            B = H @ Pp @ t(H) + R
-            invB = inv(B)
-            K = Pp @ t(H) @ invB
-            Pu = (Inn - K @ H) @ Pp
-            K_ = F @ K
-
-            F_A = F_A_f(F, dF, H, K_)
-
-            # TODO: numba jit it
-            dPp = [dF_i @ Pe @ t(F) + F @ dPe_i @ t(F) + F @ Pe @ t(dF_i) +
-                   dG_i @ Q @ t(G) + G @ dQ_i @ t(G) + G @ Q @ t(dG_i)
-                   for dF_i, dPe_i, dG_i, dQ_i in zip(dF, dPe, dG, dQ)]
-
-            dB = [dH_i @ Pp @ t(H) + H @ dPp_i @ t(H) + H @ Pp @ t(dH_i) + dR_i
-                  for dH_i, dPp_i, dR_i in zip(dH, dPp, dR)]
-
-            dK = [(dPp_i @ t(H) + Pp @ t(dH_i) - Pp @ t(H) @ invB @ dB_i) @ invB
-                  for dPp_i, dH_i, dB_i in zip(dPp, dH, dB)]
-
-            dPu = [(Inn - K @ H) @ dPp_i - (dK_i @ H + K @ dH_i) @ Pp
-                   for dPp_i, dK_i, dH_i in zip(dPp, dK, dH)]
-
-            dK_ = [dF_i @ K + F @ dK_i for dF_i, dK_i in zip(dF, dK)]
-
-            K_A = np.vstack(dK_)
-            K_A = np.vstack([K_, K_A])
-
-            # 8: AM
-            AM = list()
-
-            EXX = E_A + X_Ap @ t(X_Ap)
-
-            C0 = Cf(0)
-
-            for i, j in itertools.product(range(s), range(s)):
-                S1 = Sp(C0 @ EXX @ t(C0) @ t(dH[j]) @ invB @ dH[i])
-                S2 = Sp(C0 @ EXX @ t(Cf(j)) @ t(H) @ invB @ dH[i])
-                S3 = Sp(Cf(i) @ EXX @ t(C0) @ t(dH[j]) @ invB @ H)
-                S4 = Sp(Cf(i) @ EXX @ t(Cf(j)) @ t(H) @ invB @ H)
-                S5 = 0.5 * Sp(dB[i] @ invB @ dB[j] @ invB)
-                AM.append(S1 + S2 + S3 + S4 + S5)
-
-            AM = np.array(AM).reshape([s, s])
-            M = M + AM
-
-            # update P, dP etc.
-            Pe = Pu
-            dPe = dPu
-
-        return M
+        return rez
 
     def norm_fim(self, plan, th=None):
         ''' plan: list of 'x' and 'p' '''
@@ -1174,7 +1151,7 @@ class Model(object):
         ''' x: 3d np array [q x r x N] '''
         ''' p: list or 1d np array '''
         Mn = self.norm_fim(plan, th)
-        sign, logdet = np.linalg.slogdet(Mn)
+        _, logdet = np.linalg.slogdet(Mn)
         return -logdet
 
     def __d_crit_to_opt_grad(self, plan, q, th=None):
@@ -1363,7 +1340,8 @@ class Model(object):
                     break
 
             rez = scipy.optimize.minimize(fun=self.__crit_tau, x0=tau_guess,
-                                          args=(x_opt, copy.deepcopy(plan), th),
+                                          args=(x_opt, copy.deepcopy(plan),
+                                                th),
                                           bounds=[(0, 1)],
                                           method='SLSQP', jac=crit_tau_grad)
 
