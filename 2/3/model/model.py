@@ -350,7 +350,8 @@ class Model(object):
                 def ode(T, t):
                     return -T @ F
                 T0 = tf.eye(n)
-                T = tf.contrib.integrate.odeint(ode, T0, t)
+                T = tf.contrib.integrate.odeint(ode, T0, t,
+                                                name='mat_exp_odeint')
                 return tf.reverse(T, [0])
 
             # TODO: try AD
@@ -368,7 +369,8 @@ class Model(object):
                     T_dF = tf.map_fn(lambda dFi: T_t @ dFi, dF)
                     return -dT_F - T_dF
                 dT0 = tf.zeros([s, n, n])
-                dT = tf.contrib.integrate.odeint(ode, dT0, t_grid)
+                dT = tf.contrib.integrate.odeint(ode, dT0, t_grid,
+                                                 name='mat_exp_deriv_odeint')
                 return tf.reverse(dT, [0])
 
             # if k == 0
@@ -516,7 +518,7 @@ class Model(object):
                 dP = tf.concat(dP, axis=0)
                 PdP = tf.concat([P, dP], axis=0)
                 PdP = tf.contrib.integrate.odeint(ode, PdP, t_grid, rtol=1e-2,
-                                                  atol=1e-3)
+                                                  atol=1e-3, name='PdP_odeint')
                 PdP = PdP[-1]
                 P = tf.slice(PdP, [0, 0], [n, n])
                 dP = tf.slice(PdP, [n, 0], [n*s, n])
@@ -581,7 +583,8 @@ class Model(object):
 
                 a_A_0 = comp_a_A_k(T[0], dT[0])
 
-                a_A = tf.contrib.integrate.odeint(ode, a_A_0, t_grid)[-1]
+                a_A = tf.contrib.integrate.odeint(ode, a_A_0, t_grid,
+                                                  name='a_A_0_odeint')[-1]
 
                 return tf.concat(tf.unstack(a_A), axis=0)  # 2-rank tensor
 
@@ -696,7 +699,7 @@ class Model(object):
 
             variables = first_iteration(P_0, dP)
 
-            fim_loop = tf.while_loop(cond, body, variables)[0]
+            fim_loop = tf.while_loop(cond, body, variables, name='fim_loop')[0]
 
             self.__fim_loop_op = fim_loop
 
