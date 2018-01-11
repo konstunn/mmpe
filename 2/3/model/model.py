@@ -364,7 +364,8 @@ class Model(object):
                     dT_F = tf.map_fn(lambda dTi: dTi @ F, dT)
                     rhos = tf.abs(t_grid - t)
                     min_rho = tf.reduce_min(rhos)
-                    idx = tf.where(tf.equal(rhos, min_rho))[0][0]
+                    idx = tf.where(tf.equal(rhos, min_rho))
+                    idx = tf.cast(idx, tf.int32)[0][0]
                     T_t = tf.slice(T, [idx, 0, 0], [1, n, n])[0]
                     T_dF = tf.map_fn(lambda dFi: T_t @ dFi, dF)
                     return -dT_F - T_dF
@@ -389,7 +390,8 @@ class Model(object):
                 def integral(x_a, t):
                     rhos = tf.abs(t_grid - t)
                     min_rho = tf.reduce_min(rhos)
-                    idx = tf.where(tf.equal(rhos, min_rho))[0][0]
+                    idx = tf.where(tf.equal(rhos, min_rho))
+                    idx = tf.cast(idx, tf.int32)[0][0]
                     T_t = T[idx]
                     dT_t = dT[idx]
                     T_C_u = T_t @ C @ u_k
@@ -578,7 +580,8 @@ class Model(object):
                 def ode(a_A, t):
                     rhos = tf.abs(t_grid - t)
                     min_rho = tf.reduce_min(rhos)
-                    idx = tf.where(tf.equal(rhos, min_rho))[0][0]
+                    idx = tf.where(tf.equal(rhos, min_rho))
+                    idx = tf.cast(idx, tf.int32)[0][0]
                     return comp_a_A_k(T[idx], dT[idx])
 
                 a_A_0 = comp_a_A_k(T[0], dT[0])
