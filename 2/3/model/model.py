@@ -295,41 +295,42 @@ class Model(object):
         m = self.__m
         n = self.__n
         p = self.__p
+        s = self.__s
 
         x0_mean = self.__tf_x0_mean
         x0_cov = self.__tf_x0_cov
 
         with fim_graph.as_default():
-            th = tf.placeholder(tf.float64, shape=[None], name='th')
-            u = tf.placeholder(tf.float64, shape=[r, None], name='u')
-            t = tf.placeholder(tf.float64, shape=[None], name='t')
-            y = tf.placeholder(tf.float64, shape=[m, None], name='y')
+            th = tf.placeholder(tf.float32, shape=[s], name='th')
+            u = tf.placeholder(tf.float32, shape=[r, None], name='u')
+            t = tf.placeholder(tf.float32, shape=[None], name='t')
 
             N = tf.stack([tf.shape(t)[0]])
             N = tf.reshape(N, ())
+            u = tf.reshape(u, [N, r, 1])
 
-            F = tf.convert_to_tensor(self.__tf_F(th), tf.float64)
+            F = tf.convert_to_tensor(self.__tf_F(th), tf.float32)
             F.set_shape([n, n])
 
-            C = tf.convert_to_tensor(self.__tf_C(th), tf.float64)
+            C = tf.convert_to_tensor(self.__tf_C(th), tf.float32)
             C.set_shape([n, r])
 
-            G = tf.convert_to_tensor(self.__tf_G(th), tf.float64)
+            G = tf.convert_to_tensor(self.__tf_G(th), tf.float32)
             G.set_shape([n, p])
 
-            H = tf.convert_to_tensor(self.__tf_H(th), tf.float64)
+            H = tf.convert_to_tensor(self.__tf_H(th), tf.float32)
             H.set_shape([m, n])
 
-            x0_mean = tf.convert_to_tensor(x0_mean(th), tf.float64)
+            x0_mean = tf.convert_to_tensor(x0_mean(th), tf.float32)
             x0_mean.set_shape([n, 1])
 
-            P_0 = tf.convert_to_tensor(x0_cov(th), tf.float64)
+            P_0 = tf.convert_to_tensor(x0_cov(th), tf.float32)
             P_0.set_shape([n, n])
 
-            Q = tf.convert_to_tensor(self.__tf_w_cov(th), tf.float64)
+            Q = tf.convert_to_tensor(self.__tf_w_cov(th), tf.float32)
             Q.set_shape([p, p])
 
-            R = tf.convert_to_tensor(self.__tf_v_cov(th), tf.float64)
+            R = tf.convert_to_tensor(self.__tf_v_cov(th), tf.float32)
             R.set_shape([m, m])
 
             dF = self.__matderiv(F, th)
