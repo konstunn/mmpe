@@ -627,16 +627,15 @@ class Model(object):
                     _4 = Si @ Sigma_A__x_A__x_A_T @ SjT @ Ht @ invB @ H
                     _4 = tf.trace(_4)
                     _5 = tf.trace(dB[i] @ invB @ dB[j])
-                    elem = _1 + _2 + _3 + _4 + _5
-                    dM = tf.concat([dM, tf.stack([elem])], axis=0)
+                    elem = tf.stack([_1 + _2 + _3 + _4 + _5])
+                    dM = dM.write(l, elem)
                     return dM, l+1
 
-                dM0 = tf.zeros([0])
+                dM0 = tf.TensorArray(dtype=tf.float32, size=s*s)
                 l = tf.constant(0)
 
-                shape_invariants = [tf.TensorShape([None]), l.get_shape()]
-
-                dM = tf.while_loop(cond, body, [dM0, l], shape_invariants)[0]
+                dM = tf.while_loop(cond, body, [dM0, l], name='dM_loop')[0]
+                dM = dM.concat()
                 dM = tf.reshape(dM, [s, s])
                 return dM
 
@@ -705,6 +704,10 @@ class Model(object):
             fim_loop = tf.while_loop(cond, body, variables, name='fim_loop')[0]
 
             self.__fim_loop_op = fim_loop
+            M = fim_loop
+            Dcrit = -tf.log(tf.matrix_determinant(M))
+            self.__Dcrit = Dcrit
+            Dcrit_grad = tf.gradients(Dcrit, u)
 
 
     # defines graph, FIXME: for continuos
