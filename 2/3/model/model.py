@@ -303,36 +303,36 @@ class Model(object):
         x0_cov = self.__tf_x0_cov
 
         with fim_graph.as_default():
-            th = tf.placeholder(tf.float32, shape=[s], name='th')
-            u = tf.placeholder(tf.float32, shape=[r, None], name='u')
-            t = tf.placeholder(tf.float32, shape=[None], name='t')
+            th = tf.placeholder(tf.float64, shape=[s], name='th')
+            u = tf.placeholder(tf.float64, shape=[r, None], name='u')
+            t = tf.placeholder(tf.float64, shape=[None], name='t')
 
             N = tf.stack([tf.shape(t)[0]])
             N = tf.reshape(N, ())
             u = tf.reshape(u, [N, r, 1])
 
-            F = tf.convert_to_tensor(self.__tf_F(th), tf.float32)
+            F = tf.convert_to_tensor(self.__tf_F(th), tf.float64)
             F.set_shape([n, n])
 
-            C = tf.convert_to_tensor(self.__tf_C(th), tf.float32)
+            C = tf.convert_to_tensor(self.__tf_C(th), tf.float64)
             C.set_shape([n, r])
 
-            G = tf.convert_to_tensor(self.__tf_G(th), tf.float32)
+            G = tf.convert_to_tensor(self.__tf_G(th), tf.float64)
             G.set_shape([n, p])
 
-            H = tf.convert_to_tensor(self.__tf_H(th), tf.float32)
+            H = tf.convert_to_tensor(self.__tf_H(th), tf.float64)
             H.set_shape([m, n])
 
-            x0_mean = tf.convert_to_tensor(x0_mean(th), tf.float32)
+            x0_mean = tf.convert_to_tensor(x0_mean(th), tf.float64)
             x0_mean.set_shape([n, 1])
 
-            P_0 = tf.convert_to_tensor(x0_cov(th), tf.float32)
+            P_0 = tf.convert_to_tensor(x0_cov(th), tf.float64)
             P_0.set_shape([n, n])
 
-            Q = tf.convert_to_tensor(self.__tf_w_cov(th), tf.float32)
+            Q = tf.convert_to_tensor(self.__tf_w_cov(th), tf.float64)
             Q.set_shape([p, p])
 
-            R = tf.convert_to_tensor(self.__tf_v_cov(th), tf.float32)
+            R = tf.convert_to_tensor(self.__tf_v_cov(th), tf.float64)
             R.set_shape([m, m])
 
             derivs = [self.__matderiv(dA, th) for dA in
@@ -346,7 +346,7 @@ class Model(object):
 
                 def ode(T, t):
                     return -T @ F
-                T0 = tf.eye(n)
+                T0 = tf.eye(n, dtype=tf.float64)
                 T = tf.contrib.integrate.odeint(ode, T0, t,
                                                 name='mat_exp_odeint')
                 return tf.reverse(T, [0])
@@ -366,7 +366,7 @@ class Model(object):
                     T_t = tf.slice(T, [idx, 0, 0], [1, n, n])[0]
                     T_dF = tf.map_fn(lambda dFi: T_t @ dFi, dF)
                     return -dT_F - T_dF
-                dT0 = tf.zeros([s, n, n])
+                dT0 = tf.zeros([s, n, n], dtype=tf.float64)
                 dT = tf.contrib.integrate.odeint(ode, dT0, t_grid,
                                                  name='mat_exp_deriv_odeint')
                 return tf.reverse(dT, [0])
@@ -398,7 +398,7 @@ class Model(object):
                     derivs = tf.concat(tf.unstack(derivs), axis=0)
                     return tf.concat([T_C_u, derivs], axis=0)
 
-                init_val = tf.zeros([n*(s+1), 1])
+                init_val = tf.zeros([n*(s+1), 1], dtype=tf.float64)
 
                 int_vals = tf.contrib.integrate.odeint(integral, init_val,
                                                        t_grid)
@@ -544,12 +544,12 @@ class Model(object):
 
             def update_P(H, K, P):
                 m = K.get_shape().as_list()[0]
-                I = tf.eye(m)
+                I = tf.eye(m, dtype=tf.float64)
                 return (I - K @ H) @ P
 
             def update_dP(H, dH, K, dK, P, dP):
                 m = K.get_shape().as_list()[0]
-                I = tf.eye(m)
+                I = tf.eye(m, dtype=tf.float64)
                 I_K_H_dP = tf.map_fn(lambda dP_i: (I - K @ H) @ dP_i, dP)
                 dK_H = tf.map_fn(lambda dK_i: dK_i @ H, dK)
                 K_dH = tf.map_fn(lambda dH_i: K @ dH_i, dH)
@@ -589,10 +589,10 @@ class Model(object):
                 return tf.concat(tf.unstack(a_A), axis=0)  # 2-rank tensor
 
             def S(n, s, i):
-                zeros = tf.zeros([n, n*i])
-                eye = tf.eye(n)
+                zeros = tf.zeros([n, n*i], dtype=tf.float64)
+                eye = tf.eye(n, dtype=tf.float64)
                 rez = tf.concat([zeros, eye], axis=1)
-                zeros = tf.zeros([n, n*(s-i)])
+                zeros = tf.zeros([n, n*(s-i)], dtype=tf.float64)
                 rez = tf.concat([rez, zeros], axis=1)
                 rez.set_shape([n, n*(s+1)])
                 return rez
@@ -628,7 +628,7 @@ class Model(object):
                     dM = dM.write(l, elem)
                     return dM, l+1
 
-                dM0 = tf.TensorArray(dtype=tf.float32, size=s*s)
+                dM0 = tf.TensorArray(dtype=tf.float64, size=s*s)
                 l = tf.constant(0)
 
                 dM = tf.while_loop(cond, body, [dM0, l], name='dM_loop')[0]
@@ -649,7 +649,7 @@ class Model(object):
 
                 x_A = comp_x_A_0(T, dT, C, dC, x0_mean, dX_0, u_k, t_grid)
                 shape = x_A.get_shape().as_list()[0]
-                Sigma_A = tf.zeros([shape, shape])
+                Sigma_A = tf.zeros([shape, shape], dtype=tf.float64)
                 Pp, dPp = predict_P_dP(F, dF, P, dP, G, dG, Q, dQ, t_grid)
                 Ht = tf.transpose(H)
                 B = H @ Pp @ Ht + R
