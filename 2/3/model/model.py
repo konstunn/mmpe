@@ -335,18 +335,15 @@ class Model(object):
             R = tf.convert_to_tensor(self.__tf_v_cov(th), tf.float32)
             R.set_shape([m, m])
 
-            dF = self.__matderiv(F, th)
-            dC = self.__matderiv(C, th)
-            dG = self.__matderiv(G, th)
-            dH = self.__matderiv(H, th)
-            dQ = self.__matderiv(Q, th)
-            dR = self.__matderiv(R, th)
-            dP = self.__matderiv(P_0, th)
-            dX_0 = self.__matderiv(x0_mean, th)
+            derivs = [self.__matderiv(dA, th) for dA in
+                      [F, C, G, H, Q, R, P_0, x0_mean]]
+
+            dF, dC, dG, dH, dQ, dR, dP, dX_0 = derivs
 
             # compute exponential decay
             def mat_exp(F, t):
                 n = F.get_shape().as_list()[0]
+
                 def ode(T, t):
                     return -T @ F
                 T0 = tf.eye(n)
