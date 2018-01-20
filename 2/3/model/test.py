@@ -2,6 +2,7 @@
 
 import numpy as np
 import tensorflow as tf
+import model
 from model import Model
 from importlib import reload
 
@@ -16,12 +17,20 @@ H = lambda th: [[1., 0.]]
 
 X0 = lambda th: [[0],
                  [0]]
+
 P0 = lambda th: 0.1 * np.eye(2)
 Q = lambda th: 0.1 * np.eye(2)
 R = lambda th: [[0.1]]
 
 th = [-.5, -.5]
 
-u = [2., 2.]
+q = 4
+N = 10
+r = 1
 
-m = Model(F, C, G, H, X0, P0, Q, R, th)
+u = np.random.uniform(-1, 1, [q, r, N])
+
+p = np.random.uniform(0, 1, [q])
+p = p / np.sum(p)
+
+t = np.linspace(0., 1., N)
